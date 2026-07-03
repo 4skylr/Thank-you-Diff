@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>نوار سينما — نظام الجرد</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#08070d; --bg2:#0e0c17; --card:#141021; --card2:#1a1430; --line:#2a2145;
+  --purple:#7c3aed; --purple-dark:#4c1d95; --purple-glow:rgba(124,58,237,.35);
+  --lav:#c4b5fd; --text:#ece9f7; --muted:#8b84a3;
+  --green:#34d399; --red:#f87171; --amber:#fbbf24; --gold:#f5c542; --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Tajawal',sans-serif;
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(124,58,237,.14), transparent 60%),
+    radial-gradient(700px 500px at 0% 110%, rgba(76,29,149,.18), transparent 60%),
+    var(--bg);
+  color:var(--text); min-height:100vh;
+}
+h1,h2,h3{font-family:'Cairo',sans-serif}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+.hidden{display:none!important}
+
+/* ---------- زر اللغة ---------- */
+.langBtn{
+  position:relative;display:inline-flex;align-items:center;gap:8px;
+  padding:9px 18px;border-radius:99px;font-weight:800;font-size:13px;letter-spacing:1px;
+  color:#fff;background:rgba(20,16,33,.7);border:1px solid transparent;
+  background-clip:padding-box;backdrop-filter:blur(8px);
+  transition:box-shadow .2s, transform .1s;
+}
+.langBtn::before{
+  content:"";position:absolute;inset:-1.5px;border-radius:99px;z-index:-1;
+  background:linear-gradient(120deg,#7c3aed,#c4b5fd 40%,#4c1d95 80%);
+}
+.langBtn:hover{box-shadow:0 0 24px var(--purple-glow)}
+.langBtn:active{transform:scale(.96)}
+.langBtn .globe{font-size:15px}
+#langFloat{position:fixed;top:18px;inset-inline-start:18px;z-index:100}
+
+/* ---------- شاشة الدخول ---------- */
+#loginView{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;padding:24px}
+.clockRing{
+  width:290px;height:290px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  border:1px solid var(--line);
+  background:radial-gradient(circle at 50% 30%, rgba(124,58,237,.16), rgba(20,16,33,.9) 65%);
+  box-shadow:0 0 70px var(--purple-glow), inset 0 0 40px rgba(124,58,237,.08);
+  position:relative;margin:0 auto;
+}
+.clockRing::before{
+  content:"";position:absolute;inset:-10px;border-radius:50%;
+  border:1px solid rgba(124,58,237,.35);border-top-color:var(--purple);
+  animation:spin 12s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.clockRing::before{animation:none}}
+#bigTime{font-family:'Cairo';font-size:50px;font-weight:900;letter-spacing:2px;color:#fff;direction:ltr}
+#bigDate{color:var(--lav);font-size:14px;padding:0 14px;text-align:center}
+#bigWeek{font-size:12px;color:var(--muted);letter-spacing:1px}
+.brand{font-size:25px;font-weight:900;font-family:'Cairo';text-align:center}
+.brand span{color:var(--purple)}
+.loginCard{
+  width:min(380px,94vw);background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:26px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.loginCard p{color:var(--muted);font-size:14px;margin:6px 0 18px}
+#pinInput{
+  width:100%;padding:14px;text-align:center;font-size:26px;letter-spacing:12px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:12px;color:#fff;
+  direction:ltr;font-family:'Cairo';
+}
+#pinInput:focus{outline:2px solid var(--purple);border-color:transparent}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 22px;border-radius:12px;border:none;font-weight:700;font-size:15px;
+  background:linear-gradient(135deg,var(--purple),var(--purple-dark));color:#fff;
+  transition:filter .15s, transform .1s;
+}
+.btn:hover{filter:brightness(1.15)}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--lav)}
+.btn.small{padding:8px 14px;font-size:13px;border-radius:10px}
+.btn.danger{background:linear-gradient(135deg,#b91c1c,#7f1d1d)}
+.btn.green{background:linear-gradient(135deg,#059669,#065f46)}
+.btn.full{width:100%;margin-top:14px}
+#loginErr{color:var(--red);font-size:13px;margin-top:10px;min-height:18px}
+
+/* ---------- الهيكل ---------- */
+.app{display:none;min-height:100vh}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:12px 18px;border-bottom:1px solid var(--line);
+  background:rgba(14,12,23,.85);backdrop-filter:blur(10px);
+  position:sticky;top:0;z-index:50;
+}
+.topbar .who{display:flex;align-items:center;gap:12px}
+.avatar{
+  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--purple),var(--purple-dark));font-weight:900;font-family:'Cairo';font-size:18px;
+  overflow:hidden;position:relative;flex-shrink:0;
+}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.photoBtn{
+  position:absolute;inset:auto 0 0 0;height:16px;background:rgba(0,0,0,.65);
+  border:none;color:#fff;font-size:9px;line-height:16px;
+}
+.who .name{font-weight:700;font-size:15px}
+.who .role{font-size:12px;color:var(--muted)}
+.miniClock{text-align:center;line-height:1.35}
+.miniClock .t{font-family:'Cairo';font-weight:800;font-size:19px;direction:ltr;color:#fff}
+.miniClock .d{font-size:11px;color:var(--lav)}
+.tabs{display:flex;gap:6px;padding:14px 18px 0;overflow-x:auto;scrollbar-width:thin;white-space:nowrap}
+.tab{
+  padding:10px 16px;border-radius:12px 12px 0 0;border:1px solid transparent;border-bottom:none;
+  background:transparent;color:var(--muted);font-weight:700;font-size:13.5px;flex-shrink:0;
+}
+.tab.active{background:var(--card);border-color:var(--line);color:var(--lav)}
+.panel{padding:20px;max-width:1150px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px}
+.card h2{font-size:18px;margin-bottom:6px}
+.card .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+
+/* ---------- عناصر ---------- */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;color:var(--lav);margin-bottom:6px;font-weight:700}
+.field input,.field select{
+  width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:10px;color:#fff;font-size:14px;
+}
+.field input:focus,.field select:focus{outline:2px solid var(--purple);border-color:transparent}
+.drop{
+  border:2px dashed var(--line);border-radius:var(--radius);padding:30px 16px;text-align:center;
+  color:var(--muted);transition:.2s;cursor:pointer;
+}
+.drop:hover,.drop.over{border-color:var(--purple);color:var(--lav);background:rgba(124,58,237,.05)}
+.drop b{color:var(--lav)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{
+  text-align:start;padding:10px 12px;color:var(--lav);font-weight:700;font-size:12.5px;
+  border-bottom:1px solid var(--line);background:rgba(124,58,237,.06);white-space:nowrap;
+}
+td{padding:9px 12px;border-bottom:1px solid rgba(42,33,69,.5)}
+tr:hover td{background:rgba(124,58,237,.04)}
+.num{direction:ltr;text-align:left;font-family:'Cairo';font-weight:600}
+[dir="ltr"] .num{text-align:right}
+.pos{color:var(--green)}.neg{color:var(--red)}.zero{color:var(--muted)}
+.pill{
+  display:inline-block;padding:3px 12px;border-radius:99px;font-size:11.5px;font-weight:700;
+  background:rgba(124,58,237,.15);color:var(--lav);border:1px solid rgba(124,58,237,.3);white-space:nowrap;
+}
+.pill.g{background:rgba(52,211,153,.12);color:var(--green);border-color:rgba(52,211,153,.3)}
+.pill.a{background:rgba(251,191,36,.12);color:var(--amber);border-color:rgba(251,191,36,.3)}
+.tableWrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:12px;-webkit-overflow-scrolling:touch}
+.statRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stat .v{font-family:'Cairo';font-weight:900;font-size:22px;color:#fff;direction:ltr;text-align:end}
+.stat .l{font-size:12px;color:var(--muted);margin-top:4px}
+.toolRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.searchBox{flex:1;min-width:160px;padding:10px 14px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;color:#fff}
+.empty{padding:36px 12px;text-align:center;color:var(--muted)}
+.taskItem{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:13px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card2);
+}
+.toast{
+  position:fixed;bottom:22px;inset-inline-end:22px;z-index:99;padding:14px 20px;border-radius:12px;
+  background:var(--card2);border:1px solid var(--purple);color:#fff;font-weight:700;
+  box-shadow:0 10px 40px rgba(0,0,0,.6);display:none;max-width:88vw;
+}
+.banner{
+  padding:12px 16px;border-radius:12px;font-size:13px;margin-bottom:16px;
+  background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);color:var(--amber);
+}
+
+/* ---------- لوحة أفضل البائعين ---------- */
+.lbRow{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);
+  border-radius:14px;margin-bottom:10px;background:var(--card2);position:relative;overflow:hidden;
+}
+.lbRow .bar{position:absolute;inset-inline-start:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(124,58,237,.16),transparent);z-index:0}
+.lbRow>*{position:relative;z-index:1}
+.lbRank{
+  width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-family:'Cairo';font-weight:900;font-size:15px;background:var(--bg2);border:1px solid var(--line);flex-shrink:0;
+}
+.lbRow.r1 .lbRank{background:linear-gradient(135deg,#f5c542,#b8860b);color:#1a1005;border:none}
+.lbRow.r2 .lbRank{background:linear-gradient(135deg,#d7d7e0,#8f8fa3);color:#15151c;border:none}
+.lbRow.r3 .lbRank{background:linear-gradient(135deg,#d08a4e,#8a5a2b);color:#1d0f04;border:none}
+.lbAvatar{width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--purple),var(--purple-dark));display:flex;align-items:center;justify-content:center;font-weight:900;font-family:'Cairo';flex-shrink:0}
+.lbAvatar img{width:100%;height:100%;object-fit:cover}
+.lbName{flex:1;font-weight:700;font-size:14.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbAmt{font-family:'Cairo';font-weight:900;font-size:16px;direction:ltr;color:var(--lav);flex-shrink:0}
+
+/* ---------- الجوال ---------- */
+@media(max-width:640px){
+  .panel{padding:12px}
+  .card{padding:15px;border-radius:14px}
+  .clockRing{width:230px;height:230px}
+  #bigTime{font-size:38px}
+  .topbar{padding:10px 12px}
+  .miniClock .d{display:none}
+  th,td{padding:8px 8px;font-size:12.5px}
+  .stat .v{font-size:18px}
+  .lbAmt{font-size:14px}
+  #langFloat{top:12px;inset-inline-start:12px}
+  .tabs{padding:12px 12px 0}
+}
+@media print{body *{visibility:hidden}}
+</style>
+</head>
+<body>
+
+<div id="langFloat"><button class="langBtn" onclick="toggleLang()"><span class="globe">🌐</span><span id="langLbl">EN</span></button></div>
+
+<!-- ================= شاشة الدخول ================= -->
+<div id="loginView">
+  <div class="clockRing">
+    <div id="bigTime">--:--:--</div>
+    <div id="bigDate">—</div>
+    <div id="bigWeek">—</div>
+  </div>
+  <div class="brand" data-i18n="brand">نوار <span>سينما</span> · نظام الجرد</div>
+  <div class="loginCard">
+    <h2 data-i18n="login_title">تسجيل الدخول</h2>
+    <p data-i18n="login_sub">أدخل رمز الأدمن أو رمز الموظف المكوّن من 4 أرقام</p>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off">
+    <button class="btn full" onclick="doLogin()" data-i18n="login_btn">دخول</button>
+    <div id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ================= واجهة الأدمن ================= -->
+<div id="adminView" class="app">
+  <div class="topbar">
+    <div class="who">
+      <div class="avatar">A</div>
+      <div><div class="name" data-i18n="admin_name">المشرف العام</div><div class="role" data-i18n="admin_role">صلاحيات كاملة</div></div>
+    </div>
+    <div class="miniClock"><div class="t" id="miniTime">--:--</div><div class="d" id="miniDate">—</div></div>
+    <button class="btn ghost small" onclick="logout()" data-i18n="logout">خروج</button>
+  </div>
+  <div class="tabs" id="adminTabs">
+    <button class="tab active" data-p="pInv" onclick="showTab(this)" data-i18n="tab_inv">الجرد اليومي</button>
+    <button class="tab" data-p="pSales" onclick="showTab(this)" data-i18n="tab_sales">المبيعات</button>
+    <button class="tab" data-p="pTop" onclick="showTab(this)" data-i18n="tab_top">أفضل البائعين</button>
+    <button class="tab" data-p="pEmp" onclick="showTab(this)" data-i18n="tab_emp">الموظفون</button>
+    <button class="tab" data-p="pTasks" onclick="showTab(this)" data-i18n="tab_tasks">المهام</button>
+    <button class="tab" data-p="pResults" onclick="showTab(this)" data-i18n="tab_results">نتائج الجرد</button>
+    <button class="tab" data-p="pExpiry" onclick="showTab(this)" data-i18n="tab_expiry">تواريخ الانتهاء</button>
+  </div>
+
+  <div class="panel">
+    <div id="fbBanner" class="banner hidden" data-i18n="fb_banner">⚠️ لم يتم ضبط إعدادات Firebase بعد — البيانات تُحفظ حالياً محلياً على هذا الجهاز فقط. افتح الملف وعدّل firebaseConfig.</div>
+
+    <!-- الجرد -->
+    <div id="pInv">
+      <div class="card">
+        <h2 data-i18n="inv_title">رفع تقرير الجرد (PDF)</h2>
+        <div class="sub" data-i18n="inv_sub">ارفع ملف Current Stock Position Report — يُقرأ تلقائياً بالمستودعات الثلاثة وتُحفظ الكميات بتاريخ اليوم، ويُحسب الفرق عن آخر جرد مرفوع.</div>
+        <div class="drop" id="invDrop" onclick="document.getElementById('invFile').click()">
+          <div style="font-size:34px">📄</div>
+          <div style="margin-top:8px" data-i18n="inv_drop">اسحب ملف الجرد هنا أو اضغط للاختيار</div>
+        </div>
+        <input type="file" id="invFile" accept="application/pdf" class="hidden">
+        <div id="invStatus" style="margin-top:12px;font-size:13px;color:var(--lav)"></div>
+      </div>
+      <div class="statRow" id="invStats"></div>
+      <div class="card">
+        <h2 data-i18n="inv_table_title">المخزون الحالي والفروقات</h2>
+        <div class="sub" id="invMeta"></div>
+        <div class="toolRow">
+          <input class="searchBox" id="invSearch" data-i18n-ph="search_product" placeholder="🔍 بحث عن منتج..." oninput="renderInv()">
+          <select class="searchBox" style="flex:0;min-width:160px" id="invLocFilter" onchange="renderInv()"></select>
+        </div>
+        <div class="tableWrap"><table id="invTable">
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="th_qty_now">الكمية الحالية</th><th data-i18n="th_qty_prev">الجرد السابق</th><th data-i18n="th_diff">الفرق</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- المبيعات -->
+    <div id="pSales" class="hidden">
+      <div class="card">
+        <h2><span data-i18n="sales_title">تقرير المبيعات — من بداية السنة</span> <span class="pill" data-i18n="admin_only">للمشرف فقط</span></h2>
+        <div class="sub" data-i18n="sales_sub">ارفع ملف Sales RM Consumed لعرض حجم مبيعات المنتجات من أول السنة حتى الآن.</div>
+        <div class="drop" onclick="document.getElementById('salesFile').click()">
+          <div style="font-size:34px">📈</div>
+          <div style="margin-top:8px" data-i18n="sales_drop">اسحب ملف المبيعات هنا أو اضغط للاختيار</div>
+        </div>
+        <input type="file" id="salesFile" accept="application/pdf" class="hidden">
+        <div id="salesStatus" style="margin-top:12px;font-size:13px;color:var(--lav)"></div>
+      </div>
+      <div class="statRow" id="salesStats"></div>
+      <div class="card">
+        <h2 data-i18n="sales_table_title">حجم المبيعات حسب المنتج</h2>
+        <div class="sub" id="salesMeta"></div>
+        <div class="toolRow"><input class="searchBox" id="salesSearch" data-i18n-ph="search" placeholder="🔍 بحث..." oninput="renderSales()"></div>
+        <div class="tableWrap"><table id="salesTable">
+          <thead><tr><th>#</th><th data-i18n="th_product">المنتج</th><th data-i18n="th_sold_qty">الكمية المباعة</th><th data-i18n="th_pct">نسبة من الإجمالي</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- أفضل البائعين (أدمن) -->
+    <div id="pTop" class="hidden">
+      <div class="card">
+        <h2 data-i18n="top_up_title">رفع تقرير مبيعات الموظفين (PDF)</h2>
+        <div class="sub" data-i18n="top_up_sub">ارفع ملف Daily Transaction Summary — تُجمع المبالغ لكل موظف وتُحدَّث لوحة الترتيب التي تظهر للجميع. رفع نفس الفترة مرة أخرى يستبدلها ولا يكررها.</div>
+        <div class="drop" onclick="document.getElementById('topFile').click()">
+          <div style="font-size:34px">🏆</div>
+          <div style="margin-top:8px" data-i18n="top_drop">اسحب ملف المعاملات هنا أو اضغط للاختيار</div>
+        </div>
+        <input type="file" id="topFile" accept="application/pdf" class="hidden">
+        <div id="topStatus" style="margin-top:12px;font-size:13px;color:var(--lav)"></div>
+      </div>
+      <div class="card">
+        <div class="toolRow" style="justify-content:space-between">
+          <h2 data-i18n="top_board_title">🏆 ترتيب أفضل البائعين حتى الآن</h2>
+          <button class="btn danger small" onclick="resetLeaderboard()" data-i18n="top_reset">تصفير اللوحة</button>
+        </div>
+        <div class="sub" id="topMeta"></div>
+        <div id="lbAdmin"></div>
+      </div>
+    </div>
+
+    <!-- الموظفون -->
+    <div id="pEmp" class="hidden">
+      <div class="grid2">
+        <div class="card">
+          <h2 data-i18n="emp_add_title">إضافة موظف</h2>
+          <div class="sub" data-i18n="emp_add_sub">اختر اسماً من قائمة الموظفين الجاهزة (من ملفات المبيعات) أو اكتب اسماً جديداً، ثم حدد رمز دخول من 4 أرقام.</div>
+          <div class="field"><label data-i18n="emp_name_lbl">اسم الموظف</label>
+            <input id="empName" list="staffList" data-i18n-ph="emp_name_ph" placeholder="اختر أو اكتب الاسم...">
+            <datalist id="staffList"></datalist>
+          </div>
+          <div class="field"><label data-i18n="emp_code_lbl">رمز الدخول (4 أرقام)</label>
+            <input id="empCode" maxlength="4" inputmode="numeric" placeholder="1234" style="direction:ltr;text-align:center;letter-spacing:6px">
+          </div>
+          <button class="btn" onclick="addEmployee()" data-i18n="emp_add_btn">＋ إضافة الموظف</button>
+        </div>
+        <div class="card">
+          <h2 data-i18n="emp_list_title">قائمة الموظفين</h2>
+          <div class="sub" data-i18n="emp_list_sub">الموظف يدخل برمزه ويظهر اسمه أعلى الشاشة.</div>
+          <div id="empList"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 data-i18n="photo_appr_title">طلبات اعتماد الصور الشخصية</h2>
+        <div class="sub" data-i18n="photo_appr_sub">صور رفعها الموظفون وتنتظر موافقتك قبل ظهورها.</div>
+        <div id="photoApprovals"></div>
+      </div>
+    </div>
+
+    <!-- المهام -->
+    <div id="pTasks" class="hidden">
+      <div class="grid2">
+        <div class="card">
+          <h2 data-i18n="task_new_title">إرسال مهمة لموظف</h2>
+          <div class="sub" data-i18n="task_new_sub">اختر الموظف والمستودع ونوع المهمة — تظهر للموظف أسماء المنتجات فقط ليعبّئها.</div>
+          <div class="field"><label data-i18n="task_emp_lbl">الموظف</label><select id="taskEmp"></select></div>
+          <div class="field"><label data-i18n="task_loc_lbl">المستودع</label><select id="taskLoc"></select></div>
+          <div class="field"><label data-i18n="task_type_lbl">نوع المهمة</label>
+            <select id="taskType">
+              <option value="count" data-i18n="task_type_count">جرد فيزيكل (عدّ الكميات)</option>
+              <option value="expiry" data-i18n="task_type_expiry">تسجيل تواريخ انتهاء المنتجات</option>
+            </select>
+          </div>
+          <button class="btn" onclick="createTask()" data-i18n="task_send_btn">🚀 إرسال المهمة</button>
+        </div>
+        <div class="card">
+          <h2 data-i18n="task_list_title">المهام المرسلة</h2>
+          <div class="sub" data-i18n="task_list_sub">حالة كل مهمة أول بأول.</div>
+          <div id="taskList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- النتائج -->
+    <div id="pResults" class="hidden">
+      <div class="card">
+        <h2 data-i18n="res_title">نتائج الجرد الفيزيكل</h2>
+        <div class="sub" data-i18n="res_sub">مقارنة عدّ الموظف مع كميات النظام، مع إمكانية تحميل التقرير PDF باسم الموظف.</div>
+        <div id="resultsList"></div>
+      </div>
+      <div class="card hidden" id="resultDetailCard">
+        <div class="toolRow" style="justify-content:space-between">
+          <h2 id="resultDetailTitle"></h2>
+          <button class="btn green small" onclick="downloadResultPDF()" data-i18n="res_pdf_btn">⬇️ تحميل PDF</button>
+        </div>
+        <div class="tableWrap"><table>
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_sys_qty">كمية النظام</th><th data-i18n="th_phys_qty">العدّ الفيزيكل</th><th data-i18n="th_diff">الفرق</th></tr></thead>
+          <tbody id="resultDetailBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- التواريخ (أدمن) -->
+    <div id="pExpiry" class="hidden">
+      <div class="card" id="expPendingCard">
+        <h2 data-i18n="exp_pending_title">تسجيلات الموظفين بانتظار الاعتماد</h2>
+        <div class="sub" data-i18n="exp_pending_sub">مهام التواريخ التي أنهاها الموظفون — اعتمدها لتُنشر للجميع. التعديل والاعتماد للمشرف فقط.</div>
+        <div id="expPendingList"></div>
+      </div>
+      <div class="card">
+        <h2 data-i18n="exp_edit_title">إضافة / تعديل تاريخ انتهاء (المشرف)</h2>
+        <div class="sub" data-i18n="exp_edit_sub">اختر المستودع والمنتج وحدد التاريخ — يظهر مباشرة للجميع.</div>
+        <div class="grid2">
+          <div class="field"><label data-i18n="task_loc_lbl">المستودع</label><select id="expLoc" onchange="fillExpProducts()"></select></div>
+          <div class="field"><label data-i18n="th_product">المنتج</label><select id="expProduct"></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label data-i18n="th_exp_date">تاريخ الانتهاء</label><input type="date" id="expDate"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="adminSetExpiry()" data-i18n="exp_save_btn">💾 حفظ التاريخ</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 data-i18n="exp_reg_title">سجل تواريخ الانتهاء — يظهر للجميع</h2>
+        <div class="sub" data-i18n="exp_reg_sub">الأقرب انتهاءً بالأعلى، مع تنبيه لما تبقى عليه 30 يوماً أو أقل.</div>
+        <div class="toolRow"><input class="searchBox" id="expSearch" data-i18n-ph="search" placeholder="🔍 بحث..." oninput="renderExpiry()"></div>
+        <div class="tableWrap"><table>
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="th_exp_date">تاريخ الانتهاء</th><th data-i18n="th_remaining">المتبقي</th><th data-i18n="th_by">سجّله</th><th id="expActTh" data-i18n="th_actions">إجراء</th></tr></thead>
+          <tbody id="expBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= واجهة الموظف ================= -->
+<div id="empView" class="app">
+  <div class="topbar">
+    <div class="who">
+      <div class="avatar" id="empAvatar">م<button class="photoBtn" onclick="document.getElementById('photoFile').click()">📷</button></div>
+      <input type="file" id="photoFile" accept="image/*" class="hidden">
+      <div><div class="name" id="empWhoName">—</div><div class="role" id="empPhotoState" data-i18n="emp_role">موظف جرد</div></div>
+    </div>
+    <div class="miniClock"><div class="t" id="miniTime2">--:--</div><div class="d" id="miniDate2">—</div></div>
+    <button class="btn ghost small" onclick="logout()" data-i18n="logout">خروج</button>
+  </div>
+  <div class="panel">
+    <div class="card">
+      <h2 data-i18n="my_tasks_title">مهامي</h2>
+      <div class="sub" data-i18n="my_tasks_sub">المهام المرسلة إليك من المشرف.</div>
+      <div id="myTasks"></div>
+    </div>
+    <div class="card hidden" id="fillCard">
+      <h2 id="fillTitle"></h2>
+      <div class="sub" id="fillSub"></div>
+      <div class="tableWrap"><table>
+        <thead id="fillHead"></thead>
+        <tbody id="fillBody"></tbody>
+      </table></div>
+      <button class="btn full" onclick="submitTask()" data-i18n="submit_task_btn">✅ إرسال النتائج للمشرف</button>
+    </div>
+    <div class="card">
+      <h2 data-i18n="top_board_title">🏆 ترتيب أفضل البائعين حتى الآن</h2>
+      <div class="sub" id="topMetaEmp"></div>
+      <div id="lbEmp"></div>
+    </div>
+    <div class="card">
+      <h2 data-i18n="exp_reg_title">سجل تواريخ الانتهاء — يظهر للجميع</h2>
+      <div class="sub" data-i18n="exp_view_sub">للاطلاع فقط — التحديث من المشرف.</div>
+      <div class="toolRow"><input class="searchBox" id="expSearchEmp" data-i18n-ph="search" placeholder="🔍 بحث..." oninput="renderExpiryEmp()"></div>
+      <div class="tableWrap"><table>
+        <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="th_exp_date">تاريخ الانتهاء</th><th data-i18n="th_remaining">المتبقي</th></tr></thead>
+        <tbody id="expBodyEmp"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+/* ==========================================================
+   ⚙️ إعدادات Firebase — عدّل هذه القيم من مشروعك في Firebase
+   Console → Project Settings → Your apps → Config
+   ========================================================== */
+const firebaseConfig = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE_PROJECT.appspot.com",
+  messagingSenderId: "0000000000",
+  appId: "PASTE_APP_ID"
+};
+const ADMIN_CODE = "899899";
+/* الموظفون الجاهزون (من ملف المبيعات) — المشرف يحدد لهم رمز دخول فقط */
+const SEED_STAFF = [
+  "Waleed Hammed Alotaibi",
+  "Nawaf Hamdi Alharbi",
+  "Ohoud Saeed Almutairi",
+  "Abdullah Aldubyb",
+  "Rakan Almutiri",
+  "Ibrahim Aldamegh"
+];
+
+/* ---------- الترجمة ---------- */
+const I18N = {
+ar:{brand:'نوار <span>سينما</span> · نظام الجرد',login_title:"تسجيل الدخول",login_sub:"أدخل رمز الأدمن أو رمز الموظف المكوّن من 4 أرقام",login_btn:"دخول",login_err:"الرمز غير صحيح — تأكد وحاول مرة أخرى",admin_name:"المشرف العام",admin_role:"صلاحيات كاملة",logout:"خروج",emp_role:"موظف جرد",
+tab_inv:"الجرد اليومي",tab_sales:"المبيعات",tab_top:"أفضل البائعين",tab_emp:"الموظفون",tab_tasks:"المهام",tab_results:"نتائج الجرد",tab_expiry:"تواريخ الانتهاء",
+fb_banner:"⚠️ لم يتم ضبط إعدادات Firebase بعد — البيانات تُحفظ حالياً محلياً على هذا الجهاز فقط. افتح الملف وعدّل firebaseConfig.",
+inv_title:"رفع تقرير الجرد (PDF)",inv_sub:"ارفع ملف Current Stock Position Report — يُقرأ تلقائياً بالمستودعات وتُحفظ الكميات بتاريخ اليوم، ويُحسب الفرق عن آخر جرد مرفوع.",inv_drop:"اسحب ملف الجرد هنا أو اضغط للاختيار",inv_table_title:"المخزون الحالي والفروقات",
+sales_title:"تقرير المبيعات — من بداية السنة",admin_only:"للمشرف فقط",sales_sub:"ارفع ملف Sales RM Consumed لعرض حجم مبيعات المنتجات من أول السنة حتى الآن.",sales_drop:"اسحب ملف المبيعات هنا أو اضغط للاختيار",sales_table_title:"حجم المبيعات حسب المنتج",
+top_up_title:"رفع تقرير مبيعات الموظفين (PDF)",top_up_sub:"ارفع ملف Daily Transaction Summary — تُجمع المبالغ لكل موظف وتُحدَّث لوحة الترتيب التي تظهر للجميع. رفع نفس الفترة مرة أخرى يستبدلها ولا يكررها.",top_drop:"اسحب ملف المعاملات هنا أو اضغط للاختيار",top_board_title:"🏆 ترتيب أفضل البائعين حتى الآن",top_reset:"تصفير اللوحة",
+emp_add_title:"إضافة موظف",emp_add_sub:"اختر اسماً من قائمة الموظفين الجاهزة (من ملفات المبيعات) أو اكتب اسماً جديداً، ثم حدد رمز دخول من 4 أرقام.",emp_name_lbl:"اسم الموظف",emp_name_ph:"اختر أو اكتب الاسم...",emp_code_lbl:"رمز الدخول (4 أرقام)",emp_add_btn:"＋ إضافة الموظف",emp_list_title:"قائمة الموظفين",emp_list_sub:"الموظف يدخل برمزه ويظهر اسمه أعلى الشاشة.",
+photo_appr_title:"طلبات اعتماد الصور الشخصية",photo_appr_sub:"صور رفعها الموظفون وتنتظر موافقتك قبل ظهورها.",
+task_new_title:"إرسال مهمة لموظف",task_new_sub:"اختر الموظف والمستودع ونوع المهمة — تظهر للموظف أسماء المنتجات فقط ليعبّئها.",task_emp_lbl:"الموظف",task_loc_lbl:"المستودع",task_type_lbl:"نوع المهمة",task_type_count:"جرد فيزيكل (عدّ الكميات)",task_type_expiry:"تسجيل تواريخ انتهاء المنتجات",task_send_btn:"🚀 إرسال المهمة",task_list_title:"المهام المرسلة",task_list_sub:"حالة كل مهمة أول بأول.",
+res_title:"نتائج الجرد الفيزيكل",res_sub:"مقارنة عدّ الموظف مع كميات النظام، مع إمكانية تحميل التقرير PDF باسم الموظف.",res_pdf_btn:"⬇️ تحميل PDF",
+exp_pending_title:"تسجيلات الموظفين بانتظار الاعتماد",exp_pending_sub:"مهام التواريخ التي أنهاها الموظفون — اعتمدها لتُنشر للجميع. التعديل والاعتماد للمشرف فقط.",exp_edit_title:"إضافة / تعديل تاريخ انتهاء (المشرف)",exp_edit_sub:"اختر المستودع والمنتج وحدد التاريخ — يظهر مباشرة للجميع.",exp_save_btn:"💾 حفظ التاريخ",exp_reg_title:"سجل تواريخ الانتهاء — يظهر للجميع",exp_reg_sub:"الأقرب انتهاءً بالأعلى، مع تنبيه لما تبقى عليه 30 يوماً أو أقل.",exp_view_sub:"للاطلاع فقط — التحديث من المشرف.",
+my_tasks_title:"مهامي",my_tasks_sub:"المهام المرسلة إليك من المشرف.",submit_task_btn:"✅ إرسال النتائج للمشرف",
+th_product:"المنتج",th_wh:"المستودع",th_qty_now:"الكمية الحالية",th_qty_prev:"الجرد السابق",th_diff:"الفرق",th_sold_qty:"الكمية المباعة",th_pct:"نسبة من الإجمالي",th_sys_qty:"كمية النظام",th_phys_qty:"العدّ الفيزيكل",th_exp_date:"تاريخ الانتهاء",th_remaining:"المتبقي",th_by:"سجّله",th_actions:"إجراء",
+search:"🔍 بحث...",search_product:"🔍 بحث عن منتج...",all_wh:"كل المستودعات",
+week:"الأسبوع",of_year:"من سنة",wk:"أسبوع",
+new_pill:"جديد",done_pill:"مكتملة ✓",waiting_pill:"بانتظار الموظف",sent_pill:"تم الإرسال ✓",del:"حذف",view_cmp:"عرض المقارنة",start_fill:"بدء التعبئة",items:"صنف",code:"الرمز",
+no_inv:"ارفع أول ملف جرد لبدء التتبع",no_results_match:"لا نتائج مطابقة",no_sales:"ارفع ملف Sales RM Consumed لعرض البيانات",no_emps:"لا يوجد موظفون بعد",no_tasks:"لم تُرسل أي مهام بعد",no_res:"لا توجد نتائج مرسلة بعد",no_exp:"لا توجد تواريخ منشورة بعد",no_my_tasks:"لا توجد مهام لك حالياً — بانتظار المشرف",no_photos:"لا توجد طلبات صور حالياً",no_lb:"لم يُرفع تقرير مبيعات موظفين بعد",no_pending_exp:"لا توجد تسجيلات بانتظار الاعتماد",
+last_inv:"آخر جرد",cmp_with:"مقارنة مع جرد",no_prev:"لا يوجد جرد سابق للمقارنة",stat_items:"عدد الأصناف",stat_whs:"المستودعات",stat_value:"قيمة المخزون (شامل الضريبة)",stat_changed:"أصناف تغيّرت عن الجرد السابق",
+stat_total_units:"إجمالي الوحدات المباعة",stat_products:"عدد المنتجات",stat_top:"الأكثر مبيعاً",period:"الفترة",updated:"آخر تحديث",from_start:"بداية السنة",to_now:"الآن",
+lb_meta:"مجموع {n} تقرير · إجمالي المبيعات {amt} ريال",sar:"ريال",
+count_task:"جرد فيزيكل",expiry_task:"تواريخ انتهاء",fill_count_sub:"اكتب الكمية الفعلية الموجودة أمام كل منتج ثم أرسل.",fill_exp_sub:"اختر تاريخ انتهاء كل منتج ثم أرسل (اترك ما لا ينطبق فارغاً).",phys_qty:"الكمية الفيزيكل",
+approve_publish:"✔️ اعتماد ونشر",reject:"رفض",approve:"قبول",submitted:"أُرسلت",dates_count:"تاريخاً مسجلاً",
+expired_since:"منتهي منذ {d} يوم",days:"يوم",edit:"تعديل",
+photo_pending:"صورتك بانتظار موافقة المشرف",photo_approved:"موظف جرد",
+t_saved_inv:"تم حفظ الجرد وتحديث المخزون",t_saved_sales:"تم تحديث تقرير المبيعات",t_saved_lb:"تم تحديث لوحة أفضل البائعين 🏆",t_emp_added:"تمت إضافة الموظف ✅",t_task_sent:"تم إرسال المهمة إلى {n} 🚀",t_sent_admin:"تم إرسال النتائج للمشرف ✅",t_fill_one:"عبّئ حقلاً واحداً على الأقل",t_name_req:"اكتب اسم الموظف",t_code4:"الرمز يجب أن يكون 4 أرقام",t_code_used:"الرمز مستخدم لموظف آخر",t_code_reserved:"هذا الرمز محجوز",t_add_emp_first:"أضف موظفين أولاً",t_upload_first:"ارفع ملف الجرد أولاً",t_photo_sent:"تم رفع الصورة — بانتظار موافقة المشرف 📷",t_photo_ok:"تم اعتماد الصورة",t_photo_no:"تم رفض الصورة",t_exp_saved:"تم حفظ التاريخ ونشره للجميع",t_exp_pub:"تم اعتماد التواريخ ونشرها ✔️",t_pick_all:"اختر المستودع والمنتج والتاريخ",t_lb_reset:"تم تصفير اللوحة",
+c_del_emp:"حذف هذا الموظف؟",c_del_task:"حذف المهمة؟",c_submit:"إرسال {a} من {b} صنف للمشرف؟",c_reset_lb:"تصفير لوحة أفضل البائعين وحذف كل التقارير المرفوعة؟",
+inv_reading:"⏳ جاري قراءة الملف وتحليل المستودعات...",inv_err_parse:"❌ لم أتمكن من قراءة أصناف من هذا الملف — تأكد أنه تقرير Current Stock Position.",inv_ok:"✅ تم حفظ جرد {d} — {a} صنف في {b} مستودعات.",err:"❌ خطأ: ",
+sales_reading:"⏳ جاري قراءة تقرير المبيعات...",sales_err:"❌ لم أتعرف على بيانات مبيعات في الملف.",sales_ok:"✅ تم حفظ تقرير المبيعات ({n} منتج).",
+top_reading:"⏳ جاري قراءة مبيعات الموظفين...",top_err:"❌ لم أتعرف على بيانات موظفين في الملف.",top_ok:"✅ تمت إضافة تقرير الفترة {p} — {n} موظفين.",
+rep_title:"تقرير الجرد الفيزيكل — نوار سينما",rep_emp:"الموظف",rep_wh:"المستودع",rep_date:"تاريخ الإرسال",rep_items:"عدد الأصناف"},
+en:{brand:'Noir <span>Cinema</span> · Inventory System',login_title:"Sign in",login_sub:"Enter the admin code or your 4-digit employee code",login_btn:"Sign in",login_err:"Invalid code — please try again",admin_name:"Administrator",admin_role:"Full access",logout:"Logout",emp_role:"Inventory staff",
+tab_inv:"Daily Inventory",tab_sales:"Sales",tab_top:"Top Sellers",tab_emp:"Employees",tab_tasks:"Tasks",tab_results:"Count Results",tab_expiry:"Expiry Dates",
+fb_banner:"⚠️ Firebase is not configured yet — data is currently saved locally on this device only. Open the file and edit firebaseConfig.",
+inv_title:"Upload Stock Report (PDF)",inv_sub:"Upload the Current Stock Position Report — warehouses are read automatically, saved with today's date, and compared with the last upload.",inv_drop:"Drag the stock file here or click to browse",inv_table_title:"Current Stock & Differences",
+sales_title:"Sales Report — Year to Date",admin_only:"Admin only",sales_sub:"Upload the Sales RM Consumed file to view product sales since the start of the year.",sales_drop:"Drag the sales file here or click to browse",sales_table_title:"Sales Volume by Product",
+top_up_title:"Upload Staff Sales Report (PDF)",top_up_sub:"Upload the Daily Transaction Summary — amounts are totaled per employee and the public leaderboard updates. Re-uploading the same period replaces it, not duplicates it.",top_drop:"Drag the transactions file here or click to browse",top_board_title:"🏆 Top Sellers Leaderboard",top_reset:"Reset board",
+emp_add_title:"Add Employee",emp_add_sub:"Pick a name from the ready staff list (from sales files) or type a new one, then set a 4-digit login code.",emp_name_lbl:"Employee name",emp_name_ph:"Pick or type a name...",emp_code_lbl:"Login code (4 digits)",emp_add_btn:"＋ Add employee",emp_list_title:"Employees",emp_list_sub:"Each employee signs in with their code and sees their name on top.",
+photo_appr_title:"Profile Photo Approvals",photo_appr_sub:"Photos uploaded by employees awaiting your approval.",
+task_new_title:"Assign a Task",task_new_sub:"Choose employee, warehouse and task type — the employee sees product names only.",task_emp_lbl:"Employee",task_loc_lbl:"Warehouse",task_type_lbl:"Task type",task_type_count:"Physical count",task_type_expiry:"Record product expiry dates",task_send_btn:"🚀 Send task",task_list_title:"Sent Tasks",task_list_sub:"Live status of every task.",
+res_title:"Physical Count Results",res_sub:"Employee count vs system stock, with a downloadable PDF named after the employee.",res_pdf_btn:"⬇️ Download PDF",
+exp_pending_title:"Employee Submissions Pending Approval",exp_pending_sub:"Expiry tasks finished by employees — approve to publish for everyone. Only the admin can edit or approve.",exp_edit_title:"Add / Edit Expiry Date (Admin)",exp_edit_sub:"Pick warehouse, product and date — published to everyone instantly.",exp_save_btn:"💾 Save date",exp_reg_title:"Expiry Dates Registry — visible to everyone",exp_reg_sub:"Soonest first, with an alert at 30 days or less.",exp_view_sub:"View only — updated by the admin.",
+my_tasks_title:"My Tasks",my_tasks_sub:"Tasks assigned to you by the admin.",submit_task_btn:"✅ Submit to admin",
+th_product:"Product",th_wh:"Warehouse",th_qty_now:"Current Qty",th_qty_prev:"Previous",th_diff:"Diff",th_sold_qty:"Sold Qty",th_pct:"% of Total",th_sys_qty:"System Qty",th_phys_qty:"Physical Count",th_exp_date:"Expiry Date",th_remaining:"Remaining",th_by:"By",th_actions:"Action",
+search:"🔍 Search...",search_product:"🔍 Search products...",all_wh:"All warehouses",
+week:"Week",of_year:"of",wk:"Wk",
+new_pill:"New",done_pill:"Done ✓",waiting_pill:"Awaiting employee",sent_pill:"Submitted ✓",del:"Delete",view_cmp:"View comparison",start_fill:"Start",items:"items",code:"Code",
+no_inv:"Upload your first stock file to start tracking",no_results_match:"No matching results",no_sales:"Upload the Sales RM Consumed file to view data",no_emps:"No employees yet",no_tasks:"No tasks sent yet",no_res:"No submitted results yet",no_exp:"No dates published yet",no_my_tasks:"No tasks for you yet — waiting for the admin",no_photos:"No photo requests right now",no_lb:"No staff sales report uploaded yet",no_pending_exp:"No submissions awaiting approval",
+last_inv:"Last inventory",cmp_with:"compared with",no_prev:"no previous inventory to compare",stat_items:"Items",stat_whs:"Warehouses",stat_value:"Stock value (incl. VAT)",stat_changed:"Items changed vs previous",
+stat_total_units:"Total units sold",stat_products:"Products",stat_top:"Best seller",period:"Period",updated:"Updated",from_start:"start of year",to_now:"now",
+lb_meta:"{n} report(s) combined · total sales {amt} SAR",sar:"SAR",
+count_task:"Physical count",expiry_task:"Expiry dates",fill_count_sub:"Type the actual quantity next to each product, then submit.",fill_exp_sub:"Pick an expiry date per product, leave blank if not applicable.",phys_qty:"Physical qty",
+approve_publish:"✔️ Approve & publish",reject:"Reject",approve:"Approve",submitted:"Submitted",dates_count:"dates recorded",
+expired_since:"Expired {d} days ago",days:"days",edit:"Edit",
+photo_pending:"Your photo awaits admin approval",photo_approved:"Inventory staff",
+t_saved_inv:"Inventory saved and stock updated",t_saved_sales:"Sales report updated",t_saved_lb:"Leaderboard updated 🏆",t_emp_added:"Employee added ✅",t_task_sent:"Task sent to {n} 🚀",t_sent_admin:"Results sent to admin ✅",t_fill_one:"Fill at least one field",t_name_req:"Enter the employee name",t_code4:"Code must be 4 digits",t_code_used:"Code already in use",t_code_reserved:"This code is reserved",t_add_emp_first:"Add employees first",t_upload_first:"Upload a stock file first",t_photo_sent:"Photo uploaded — awaiting admin approval 📷",t_photo_ok:"Photo approved",t_photo_no:"Photo rejected",t_exp_saved:"Date saved and published",t_exp_pub:"Dates approved and published ✔️",t_pick_all:"Pick warehouse, product and date",t_lb_reset:"Leaderboard reset",
+c_del_emp:"Delete this employee?",c_del_task:"Delete this task?",c_submit:"Submit {a} of {b} items to the admin?",c_reset_lb:"Reset the leaderboard and delete all uploaded reports?",
+inv_reading:"⏳ Reading file and analyzing warehouses...",inv_err_parse:"❌ Couldn't read items — make sure it's a Current Stock Position report.",inv_ok:"✅ Saved inventory {d} — {a} items in {b} warehouses.",err:"❌ Error: ",
+sales_reading:"⏳ Reading sales report...",sales_err:"❌ Couldn't detect sales data in this file.",sales_ok:"✅ Sales report saved ({n} products).",
+top_reading:"⏳ Reading staff sales...",top_err:"❌ Couldn't detect employee data in this file.",top_ok:"✅ Added period {p} — {n} employees.",
+rep_title:"Physical Count Report — Noir Cinema",rep_emp:"Employee",rep_wh:"Warehouse",rep_date:"Submitted",rep_items:"Items"}
+};
+let LANG = localStorage.getItem("noir_lang") || "ar";
+function t(k, vars){ let s = (I18N[LANG][k] ?? I18N.ar[k] ?? k); if(vars) for(const [a,b] of Object.entries(vars)) s = s.replace("{"+a+"}", b); return s; }
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
+  $("langLbl").textContent = LANG === "ar" ? "EN" : "عربي";
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.dataset.i18n;
+    if (k === "brand") el.innerHTML = t(k); else el.textContent = t(k);
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>el.placeholder = t(el.dataset.i18nPh));
+  const lf = $("invLocFilter");
+  if (lf && lf.options.length) lf.options[0].textContent = t("all_wh");
+  tickClock();
+  rerenderAll();
+}
+function toggleLang(){ LANG = LANG === "ar" ? "en" : "ar"; localStorage.setItem("noir_lang", LANG); applyLang(); }
+function rerenderAll(){
+  try{
+    if (session?.role === "admin"){ renderInv(); renderSales(); renderLeaderboard(); renderEmpList(); renderTaskList(); renderResultsList(); renderExpiry(); renderExpPending(); renderPhotoApprovals(); }
+    if (session?.role === "emp"){ renderMyTasks(); renderLeaderboard(); renderExpiryEmp(); }
+  }catch(e){}
+}
+
+/* ---------- طبقة التخزين: Firestore أو محلي احتياطياً ---------- */
+let fs = null;
+const FB_READY = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("PASTE");
+if (FB_READY) { firebase.initializeApp(firebaseConfig); fs = firebase.firestore(); }
+const DB = {
+  async set(col, id, data){
+    if (fs) await fs.collection(col).doc(id).set(data);
+    else { const k = JSON.parse(localStorage.getItem("noir_"+col)||"{}"); k[id]=data; localStorage.setItem("noir_"+col, JSON.stringify(k)); }
+  },
+  async get(col, id){
+    if (fs){ const d = await fs.collection(col).doc(id).get(); return d.exists ? d.data() : null; }
+    const k = JSON.parse(localStorage.getItem("noir_"+col)||"{}"); return k[id]||null;
+  },
+  async list(col){
+    if (fs){ const s = await fs.collection(col).get(); return s.docs.map(d=>({id:d.id, ...d.data()})); }
+    const k = JSON.parse(localStorage.getItem("noir_"+col)||"{}");
+    return Object.entries(k).map(([id,v])=>({id,...v}));
+  },
+  async del(col, id){
+    if (fs) await fs.collection(col).doc(id).delete();
+    else { const k = JSON.parse(localStorage.getItem("noir_"+col)||"{}"); delete k[id]; localStorage.setItem("noir_"+col, JSON.stringify(k)); }
+  }
+};
+
+/* ---------- أدوات ---------- */
+const $ = id => document.getElementById(id);
+function toast(msg){ const el=$("toast"); el.textContent=msg; el.style.display="block"; clearTimeout(el._h); el._h=setTimeout(()=>el.style.display="none",3200); }
+function todayKey(d=new Date()){ return d.toISOString().slice(0,10); }
+function fmt(n){ return Number(n).toLocaleString("en-US",{maximumFractionDigits:2}); }
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function docId(s){ return String(s).replace(/[\/#?%\[\]\.]/g,"_"); }
+function isoWeek(d){
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(x.getUTCFullYear(),0,1));
+  return Math.ceil((((x - y0) / 86400000) + 1) / 7);
+}
+const AR_DAYS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const AR_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+function tickClock(){
+  const n = new Date();
+  const time = n.toLocaleTimeString("en-GB");
+  const date = LANG==="ar"
+    ? `${AR_DAYS[n.getDay()]} ${n.getDate()} ${AR_MONTHS[n.getMonth()]} ${n.getFullYear()}م`
+    : n.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const wk = `${t("week")} ${isoWeek(n)} ${t("of_year")} ${n.getFullYear()}`;
+  if($("bigTime")){ $("bigTime").textContent=time; $("bigDate").textContent=date; $("bigWeek").textContent=wk; }
+  for(const [a,b] of [["miniTime","miniDate"],["miniTime2","miniDate2"]]){
+    if($(a)){ $(a).textContent=time.slice(0,5); $(b).textContent=`${date} · ${t("wk")} ${isoWeek(n)}`; }
+  }
+}
+setInterval(tickClock,1000);
+
+/* ---------- الدخول ---------- */
+let session = null;
+async function doLogin(){
+  const pin = $("pinInput").value.trim();
+  $("loginErr").textContent = "";
+  if (pin === ADMIN_CODE){ session = {role:"admin"}; enterAdmin(); return; }
+  if (/^\d{4}$/.test(pin)){
+    const emp = await DB.get("employees", pin);
+    if (emp){ session = {role:"emp", code:pin, name:emp.name}; enterEmp(); return; }
+  }
+  $("loginErr").textContent = t("login_err");
+}
+$("pinInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+function logout(){ location.reload(); }
+async function enterAdmin(){
+  $("loginView").style.display="none";
+  $("adminView").style.display="block";
+  if(!FB_READY) $("fbBanner").classList.remove("hidden");
+  await seedStaff();
+  loadInventory(); loadSales(); loadLeaderboard(); loadEmployees(); loadTasks(); loadResults(); loadExpiry(); loadExpPending();
+}
+async function enterEmp(){
+  $("loginView").style.display="none";
+  $("empView").style.display="block";
+  $("empWhoName").textContent = session.name;
+  refreshEmpAvatar();
+  loadMyTasks(); loadLeaderboard(); loadExpiry();
+}
+function showTab(btn){
+  document.querySelectorAll("#adminTabs .tab").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");
+  ["pInv","pSales","pTop","pEmp","pTasks","pResults","pExpiry"].forEach(p=>$(p).classList.add("hidden"));
+  $(btn.dataset.p).classList.remove("hidden");
+}
+
+/* ==========================================================
+   قارئ PDF — لا تعديل (نفس النسخة المختبرة)
+   ========================================================== */
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+async function pdfToLines(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  const lines = [];
+  for (let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const rows = {};
+    for (const it of tc.items){
+      if (!it.str.trim()) continue;
+      const y = Math.round(it.transform[5]);
+      let key = Object.keys(rows).find(k => Math.abs(k - y) <= 2);
+      if (key === undefined) key = y;
+      (rows[key] = rows[key] || []).push({x: it.transform[4], s: it.str});
+    }
+    Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const line = rows[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(" ").replace(/\s+/g," ").trim();
+      if (line) lines.push(line);
+    });
+  }
+  return lines;
+}
+const NUM = "-?[\\d,]+\\.\\d+";
+const ITEM_RE = new RegExp(`^(.*?)\\s+(${NUM})\\s+(${NUM})\\s+(${NUM})\\s+(${NUM})$`);
+function toNum(s){ return parseFloat(String(s).replace(/,/g,"")); }
+function cleanName(n){
+  n = n.trim();
+  const half = Math.floor(n.length/2);
+  const a = n.slice(0,half).trim(), b = n.slice(half).trim();
+  if (a && a === b) n = a;
+  else {
+    const parts = n.split(" ");
+    for(let i=1;i<parts.length;i++){
+      const l = parts.slice(0,i).join(" "), r = parts.slice(i).join(" ");
+      if (l === r){ n = l; break; }
+    }
+  }
+  return n.replace(/^[A-Z]\d{6,}\s+/,"").trim();
+}
+function parseStockLines(lines){
+  const standalone = new Set(lines.filter(l=>!ITEM_RE.test(l)).map(l=>l.trim()));
+  const locs = [];
+  for (const l of lines){
+    const m = l.match(ITEM_RE);
+    if (m && /[A-Za-z\u0600-\u06FF]/.test(m[1]) && standalone.has(m[1].trim()) && cleanName(m[1]) === m[1].trim()){
+      if (!locs.includes(m[1].trim())) locs.push(m[1].trim());
+    }
+  }
+  const items = []; let cur = null;
+  for (const l of lines){
+    const x = l.trim();
+    if (locs.includes(x)){ cur = x; continue; }
+    if (/^Grand Total/i.test(x)) { cur = null; continue; }
+    const m = x.match(ITEM_RE);
+    if (!m || !cur) continue;
+    const rawName = m[1].trim();
+    if (!/[A-Za-z\u0600-\u06FF&]/.test(rawName)) continue;
+    if (locs.includes(rawName)) continue;
+    const name = cleanName(rawName);
+    if (!name || /^Page /i.test(name) || /Report$/i.test(name)) continue;
+    items.push({loc: cur, name, qty: toNum(m[2]), gross: toNum(m[5])});
+  }
+  const map = {};
+  for (const it of items){
+    const k = it.loc + "|" + it.name;
+    if (map[k]) { map[k].qty += it.qty; map[k].gross += it.gross; }
+    else map[k] = {...it};
+  }
+  return {locations: locs, items: Object.values(map)};
+}
+function parseSalesLines(lines){
+  const re = new RegExp(`^(.*?)\\s+(${NUM})\\s+(${NUM})$`);
+  const rows = []; let from = "", to = "";
+  for (const l of lines){
+    const x = l.trim();
+    const mf = x.match(/From:\s*([\d/]+)/i); if (mf) from = mf[1];
+    const mt = x.match(/To:\s*([\d/]+)/i); if (mt) to = mt[1];
+    if (/^Grand Total/i.test(x)) continue;
+    const m = x.match(re);
+    if (!m) continue;
+    const name = m[1].trim();
+    if (!/[A-Za-z\u0600-\u06FF&]/.test(name)) continue;
+    if (/User Name|Sale Unpunched|Page \d|Report|As On/i.test(name)) continue;
+    rows.push({name: cleanName(name), qty: toNum(m[2])});
+  }
+  return {from, to, rows};
+}
+/* قارئ مبيعات الموظفين (Daily Transaction Summary) */
+function parseSellersLines(lines){
+  let from="", to="";
+  const ids = {}; const totals = {};
+  const headRe = /^(\d{3,6})\s+([A-Za-z][A-Za-z .'\-]+)$/;
+  for (const l of lines){
+    const x = l.trim();
+    const mf = x.match(/From:\s*([\d/]+)/); if (mf && !from) from = mf[1];
+    const mt = x.match(/^To:\s*([\d/]+)/); if (mt && !to) to = mt[1];
+    if (/^User:/i.test(x)) continue;
+    const h = x.match(headRe);
+    if (h){ ids[h[2].replace(/\s+/g," ").trim()] = h[1]; continue; }
+    const m = x.match(/^(.+?)\s+([\d,]+\.\d{2})$/);
+    if (m){
+      const name = m[1].replace(/\s+/g," ").trim();
+      if (ids[name] !== undefined) totals[name] = (totals[name]||0) + toNum(m[2]);
+    }
+  }
+  return {from, to, sellers: Object.entries(totals).map(([name,amount])=>({name, empId: ids[name]||"", amount}))};
+}
+
+/* ---------- الجرد اليومي ---------- */
+let latestSnap = null, prevSnap = null;
+$("invFile").addEventListener("change", e=>{ if(e.target.files[0]) handleInvUpload(e.target.files[0]); e.target.value=""; });
+const dz = $("invDrop");
+["dragover","dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{
+  e.preventDefault();
+  dz.classList.toggle("over", ev==="dragover");
+  if (ev==="drop" && e.dataTransfer.files[0]) handleInvUpload(e.dataTransfer.files[0]);
+}));
+async function handleInvUpload(file){
+  try{
+    $("invStatus").textContent = t("inv_reading");
+    const parsed = parseStockLines(await pdfToLines(file));
+    if (!parsed.items.length) { $("invStatus").textContent = t("inv_err_parse"); return; }
+    const key = todayKey();
+    await DB.set("inv_snapshots", key, {date:key, ts:Date.now(), locations:parsed.locations, items:parsed.items});
+    $("invStatus").textContent = t("inv_ok",{d:key,a:parsed.items.length,b:parsed.locations.length});
+    toast(t("t_saved_inv"));
+    await loadInventory();
+  }catch(err){ console.error(err); $("invStatus").textContent = t("err")+err.message; }
+}
+async function loadInventory(){
+  const snaps = (await DB.list("inv_snapshots")).sort((a,b)=>a.date<b.date?1:-1);
+  latestSnap = snaps[0]||null; prevSnap = snaps[1]||null;
+  const sel = $("invLocFilter");
+  sel.innerHTML = `<option value="">${t("all_wh")}</option>`;
+  if (latestSnap) latestSnap.locations.forEach(l=>sel.innerHTML+=`<option>${esc(l)}</option>`);
+  fillTaskSelectors(); fillExpirySelectors();
+  renderInv();
+}
+function renderInv(){
+  const body = $("invTable")?.querySelector("tbody"); if(!body) return;
+  const stats = $("invStats");
+  if (!latestSnap){ body.innerHTML=`<tr><td colspan="5" class="empty">${t("no_inv")}</td></tr>`; stats.innerHTML=""; $("invMeta").textContent=""; return; }
+  $("invMeta").textContent = `${t("last_inv")}: ${latestSnap.date}` + (prevSnap ? ` · ${t("cmp_with")} ${prevSnap.date}` : ` · ${t("no_prev")}`);
+  const prevMap = {};
+  if (prevSnap) prevSnap.items.forEach(i=>prevMap[i.loc+"|"+i.name]=i.qty);
+  const q = ($("invSearch").value||"").toLowerCase();
+  const lf = $("invLocFilter").value;
+  const rows = latestSnap.items.filter(i => (!lf || i.loc===lf) && (!q || i.name.toLowerCase().includes(q)));
+  let changed=0, grossAll=0;
+  body.innerHTML = rows.map(i=>{
+    const pv = prevMap[i.loc+"|"+i.name];
+    const diff = pv===undefined ? null : +(i.qty-pv).toFixed(2);
+    if (diff!==null && diff!==0) changed++;
+    const dTxt = diff===null ? `<span class="pill">${t("new_pill")}</span>`
+      : diff===0 ? '<span class="zero num">0</span>'
+      : `<span class="num ${diff>0?"pos":"neg"}">${diff>0?"+":""}${fmt(diff)}</span>`;
+    return `<tr><td>${esc(i.name)}</td><td><span class="pill">${esc(i.loc)}</span></td>
+      <td class="num">${fmt(i.qty)}</td><td class="num">${pv===undefined?"—":fmt(pv)}</td><td>${dTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="empty">${t("no_results_match")}</td></tr>`;
+  latestSnap.items.forEach(i=>grossAll+=i.gross||0);
+  let changedAll=0;
+  latestSnap.items.forEach(i=>{ const pv=prevMap[i.loc+"|"+i.name]; if(pv!==undefined && +(i.qty-pv).toFixed(2)!==0) changedAll++; });
+  stats.innerHTML = `
+    <div class="stat"><div class="v">${fmt(latestSnap.items.length)}</div><div class="l">${t("stat_items")}</div></div>
+    <div class="stat"><div class="v">${latestSnap.locations.length}</div><div class="l">${t("stat_whs")}</div></div>
+    <div class="stat"><div class="v">${fmt(grossAll)}</div><div class="l">${t("stat_value")}</div></div>
+    <div class="stat"><div class="v">${prevSnap?changedAll:"—"}</div><div class="l">${t("stat_changed")}</div></div>`;
+}
+
+/* ---------- المبيعات (منتجات) ---------- */
+let salesData = null;
+$("salesFile").addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return; e.target.value="";
+  try{
+    $("salesStatus").textContent = t("sales_reading");
+    const parsed = parseSalesLines(await pdfToLines(f));
+    if (!parsed.rows.length){ $("salesStatus").textContent=t("sales_err"); return; }
+    await DB.set("sales_reports","latest",{...parsed, ts:Date.now(), savedOn: todayKey()});
+    $("salesStatus").textContent = t("sales_ok",{n:parsed.rows.length});
+    toast(t("t_saved_sales"));
+    await loadSales();
+  }catch(err){ $("salesStatus").textContent=t("err")+err.message; }
+});
+async function loadSales(){ salesData = await DB.get("sales_reports","latest"); renderSales(); }
+function renderSales(){
+  const body = $("salesTable")?.querySelector("tbody"); if(!body) return;
+  const stats=$("salesStats");
+  if (!salesData){ body.innerHTML=`<tr><td colspan="4" class="empty">${t("no_sales")}</td></tr>`; stats.innerHTML=""; $("salesMeta").textContent=""; return; }
+  $("salesMeta").textContent = `${t("period")}: ${salesData.from||t("from_start")} → ${salesData.to||t("to_now")} · ${t("updated")}: ${salesData.savedOn}`;
+  const q = ($("salesSearch").value||"").toLowerCase();
+  const total = salesData.rows.reduce((s,r)=>s+r.qty,0);
+  const rows = salesData.rows.filter(r=>!q||r.name.toLowerCase().includes(q)).sort((a,b)=>b.qty-a.qty);
+  body.innerHTML = rows.map((r,i)=>`<tr><td class="num">${i+1}</td><td>${esc(r.name)}</td>
+    <td class="num">${fmt(r.qty)}</td><td class="num">${total?((r.qty/total*100).toFixed(1)+"%"):"—"}</td></tr>`).join("")
+    || `<tr><td colspan="4" class="empty">${t("no_results_match")}</td></tr>`;
+  const top = [...salesData.rows].sort((a,b)=>b.qty-a.qty)[0];
+  stats.innerHTML = `
+    <div class="stat"><div class="v">${fmt(total)}</div><div class="l">${t("stat_total_units")}</div></div>
+    <div class="stat"><div class="v">${salesData.rows.length}</div><div class="l">${t("stat_products")}</div></div>
+    <div class="stat"><div class="v" style="font-size:15px">${top?esc(top.name):"—"}</div><div class="l">${t("stat_top")} (${top?fmt(top.qty):0})</div></div>`;
+}
+
+/* ---------- أفضل البائعين ---------- */
+let sellerReports = [];
+$("topFile").addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return; e.target.value="";
+  try{
+    $("topStatus").textContent = t("top_reading");
+    const parsed = parseSellersLines(await pdfToLines(f));
+    if (!parsed.sellers.length){ $("topStatus").textContent = t("top_err"); return; }
+    const period = `${parsed.from||"x"}_${parsed.to||"x"}`;
+    await DB.set("seller_reports", docId(period), {...parsed, ts:Date.now()});
+    /* إضافة الأسماء الجديدة لقائمة الموظفين الجاهزة */
+    for (const s of parsed.sellers) await ensureStaff(s.name);
+    $("topStatus").textContent = t("top_ok",{p:`${parsed.from} → ${parsed.to}`, n:parsed.sellers.length});
+    toast(t("t_saved_lb"));
+    await loadLeaderboard(); await loadStaffList();
+  }catch(err){ $("topStatus").textContent = t("err")+err.message; }
+});
+async function loadLeaderboard(){ sellerReports = await DB.list("seller_reports"); renderLeaderboard(); }
+async function getPhotoMap(){
+  const emps = await DB.list("employees");
+  const map = {};
+  emps.forEach(e=>{ if(e.photo) map[e.name]=e.photo; });
+  return map;
+}
+async function renderLeaderboard(){
+  const agg = {};
+  sellerReports.forEach(r=>r.sellers.forEach(s=>{ agg[s.name]=(agg[s.name]||0)+s.amount; }));
+  const list = Object.entries(agg).map(([name,amount])=>({name,amount})).sort((a,b)=>b.amount-a.amount);
+  const total = list.reduce((s,x)=>s+x.amount,0);
+  const max = list[0]?.amount || 1;
+  const photos = await getPhotoMap();
+  const html = list.length ? list.map((s,i)=>{
+    const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1);
+    const av = photos[s.name] ? `<img src="${photos[s.name]}" alt="">` : esc(s.name.trim()[0]||"?");
+    return `<div class="lbRow r${i+1}">
+      <div class="bar" style="width:${(s.amount/max*100).toFixed(1)}%"></div>
+      <div class="lbRank">${medal}</div>
+      <div class="lbAvatar">${av}</div>
+      <div class="lbName">${esc(s.name)}</div>
+      <div class="lbAmt">${fmt(s.amount)} <small style="font-size:11px;color:var(--muted)">${t("sar")}</small></div>
+    </div>`;
+  }).join("") : `<div class="empty">${t("no_lb")}</div>`;
+  if ($("lbAdmin")) $("lbAdmin").innerHTML = html;
+  if ($("lbEmp")) $("lbEmp").innerHTML = html;
+  const meta = list.length ? t("lb_meta",{n:sellerReports.length, amt:fmt(total)}) : "";
+  if ($("topMeta")) $("topMeta").textContent = meta;
+  if ($("topMetaEmp")) $("topMetaEmp").textContent = meta;
+}
+async function resetLeaderboard(){
+  if (!confirm(t("c_reset_lb"))) return;
+  for (const r of sellerReports) await DB.del("seller_reports", r.id);
+  toast(t("t_lb_reset"));
+  loadLeaderboard();
+}
+
+/* ---------- الموظفون + قائمة الأسماء الجاهزة ---------- */
+let employees = [], staffNames = [];
+async function ensureStaff(name){
+  name = name.replace(/\s+/g," ").trim();
+  if (!name) return;
+  const id = docId(name);
+  if (!(await DB.get("staff_directory", id))) await DB.set("staff_directory", id, {name});
+}
+async function seedStaff(){ for (const n of SEED_STAFF) await ensureStaff(n); await loadStaffList(); }
+async function loadStaffList(){
+  staffNames = (await DB.list("staff_directory")).map(s=>s.name).sort();
+  const dl = $("staffList");
+  if (dl) dl.innerHTML = staffNames.map(n=>`<option value="${esc(n)}">`).join("");
+}
+async function loadEmployees(){
+  employees = await DB.list("employees");
+  renderEmpList(); renderPhotoApprovals(); fillTaskSelectors();
+}
+function renderEmpList(){
+  const el = $("empList"); if(!el) return;
+  el.innerHTML = employees.length ? employees.map(e=>`
+    <div class="taskItem">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="lbAvatar" style="width:36px;height:36px">${e.photo?`<img src="${e.photo}" alt="">`:esc(e.name.trim()[0])}</div>
+        <div><b>${esc(e.name)}</b><div style="font-size:12px;color:var(--muted)">${t("code")}: <span class="num">${e.id}</span></div></div>
+      </div>
+      <button class="btn danger small" onclick="delEmployee('${e.id}')">${t("del")}</button>
+    </div>`).join("") : `<div class="empty">${t("no_emps")}</div>`;
+}
+async function addEmployee(){
+  const name = $("empName").value.replace(/\s+/g," ").trim(), code = $("empCode").value.trim();
+  if (!name) return toast(t("t_name_req"));
+  if (!/^\d{4}$/.test(code)) return toast(t("t_code4"));
+  if (ADMIN_CODE.startsWith(code)) return toast(t("t_code_reserved"));
+  if (await DB.get("employees", code)) return toast(t("t_code_used"));
+  await DB.set("employees", code, {name, createdAt: Date.now()});
+  await ensureStaff(name);
+  $("empName").value=""; $("empCode").value="";
+  toast(t("t_emp_added"));
+  loadEmployees(); loadStaffList();
+}
+async function delEmployee(code){
+  if (!confirm(t("c_del_emp"))) return;
+  await DB.del("employees", code);
+  loadEmployees();
+}
+
+/* ---------- الصور الشخصية (رفع الموظف + اعتماد المشرف) ---------- */
+$("photoFile")?.addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return; e.target.value="";
+  const img = new Image();
+  img.onload = async ()=>{
+    const c = document.createElement("canvas");
+    const size = 160; c.width = size; c.height = size;
+    const s = Math.min(img.width, img.height);
+    c.getContext("2d").drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, size, size);
+    const data = c.toDataURL("image/jpeg", .8);
+    const emp = await DB.get("employees", session.code);
+    await DB.set("employees", session.code, {...emp, pendingPhoto: data, pendingAt: Date.now()});
+    toast(t("t_photo_sent"));
+    refreshEmpAvatar();
+  };
+  img.src = URL.createObjectURL(f);
+});
+async function refreshEmpAvatar(){
+  const emp = await DB.get("employees", session.code);
+  const av = $("empAvatar");
+  const btn = '<button class="photoBtn" onclick="document.getElementById(\'photoFile\').click()">📷</button>';
+  if (emp?.photo) av.innerHTML = `<img src="${emp.photo}" alt="">` + btn;
+  else av.innerHTML = esc(session.name.trim()[0]||"م") + btn;
+  $("empPhotoState").textContent = emp?.pendingPhoto ? t("photo_pending") : t("photo_approved");
+}
+function renderPhotoApprovals(){
+  const el = $("photoApprovals"); if(!el) return;
+  const pend = employees.filter(e=>e.pendingPhoto);
+  el.innerHTML = pend.length ? pend.map(e=>`
+    <div class="taskItem">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="lbAvatar" style="width:52px;height:52px;border-radius:14px"><img src="${e.pendingPhoto}" alt=""></div>
+        <b>${esc(e.name)}</b>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn green small" onclick="approvePhoto('${e.id}',true)">${t("approve")} ✔️</button>
+        <button class="btn danger small" onclick="approvePhoto('${e.id}',false)">${t("reject")}</button>
+      </div>
+    </div>`).join("") : `<div class="empty">${t("no_photos")}</div>`;
+}
+async function approvePhoto(code, ok){
+  const e = await DB.get("employees", code); if(!e) return;
+  const upd = {...e};
+  if (ok) upd.photo = e.pendingPhoto;
+  delete upd.pendingPhoto; delete upd.pendingAt;
+  await DB.set("employees", code, upd);
+  toast(ok ? t("t_photo_ok") : t("t_photo_no"));
+  loadEmployees(); renderLeaderboard();
+}
+
+/* ---------- المهام ---------- */
+let tasks = [];
+function fillTaskSelectors(){
+  const es = $("taskEmp"), ls = $("taskLoc");
+  if (!es) return;
+  es.innerHTML = employees.length ? employees.map(e=>`<option value="${e.id}">${esc(e.name)} (${e.id})</option>`).join("") : `<option value="">—</option>`;
+  ls.innerHTML = latestSnap ? latestSnap.locations.map(l=>`<option>${esc(l)}</option>`).join("") : `<option value="">—</option>`;
+}
+async function createTask(){
+  const empCode = $("taskEmp").value, loc = $("taskLoc").value, type = $("taskType").value;
+  if (!empCode) return toast(t("t_add_emp_first"));
+  if (!loc || !latestSnap) return toast(t("t_upload_first"));
+  const emp = employees.find(e=>e.id===empCode);
+  const items = latestSnap.items.filter(i=>i.loc===loc).map(i=>i.name);
+  const id = "T"+Date.now();
+  await DB.set("tasks", id, {
+    type, warehouse: loc, empCode, empName: emp.name,
+    items, status:"pending", createdAt: Date.now(), createdOn: todayKey()
+  });
+  toast(t("t_task_sent",{n:emp.name}));
+  loadTasks();
+}
+async function loadTasks(){
+  tasks = (await DB.list("tasks")).sort((a,b)=>b.createdAt-a.createdAt);
+  renderTaskList();
+}
+function renderTaskList(){
+  const el = $("taskList"); if(!el) return;
+  el.innerHTML = tasks.length ? tasks.map(x=>`
+    <div class="taskItem">
+      <div>
+        <b>${x.type==="count"?t("count_task"):t("expiry_task")}</b> — ${esc(x.warehouse)}
+        <div style="font-size:12px;color:var(--muted)">${esc(x.empName)} · ${x.createdOn} · ${x.items.length} ${t("items")}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="pill ${x.status==="done"?"g":"a"}">${x.status==="done"?t("done_pill"):t("waiting_pill")}</span>
+        <button class="btn danger small" onclick="delTask('${x.id}')">${t("del")}</button>
+      </div>
+    </div>`).join("") : `<div class="empty">${t("no_tasks")}</div>`;
+}
+async function delTask(id){ if(!confirm(t("c_del_task")))return; await DB.del("tasks",id); loadTasks(); loadResults(); loadExpPending(); }
+
+/* ---------- نتائج الجرد الفيزيكل ---------- */
+let doneCounts = [], openResult = null;
+async function loadResults(){
+  doneCounts = (await DB.list("tasks")).filter(x=>x.status==="done" && x.type==="count").sort((a,b)=>b.submittedAt-a.submittedAt);
+  renderResultsList();
+}
+function renderResultsList(){
+  const el = $("resultsList"); if(!el) return;
+  el.innerHTML = doneCounts.length ? doneCounts.map(x=>`
+    <div class="taskItem">
+      <div><b>${esc(x.empName)}</b> — ${esc(x.warehouse)}
+        <div style="font-size:12px;color:var(--muted)">${t("submitted")}: ${new Date(x.submittedAt).toLocaleString("en-GB")} · ${x.items.length} ${t("items")}</div>
+      </div>
+      <button class="btn small" onclick="openResultDetail('${x.id}')">${t("view_cmp")}</button>
+    </div>`).join("") : `<div class="empty">${t("no_res")}</div>`;
+}
+async function resultRows(x){
+  const sysMap = {};
+  const snap = (await DB.get("inv_snapshots", x.snapshotDate)) || latestSnap;
+  if (snap) snap.items.filter(i=>i.loc===x.warehouse).forEach(i=>sysMap[i.name]=i.qty);
+  return x.items.map(name=>{
+    const sys = sysMap[name], raw = x.results?.[name];
+    const p = raw===undefined||raw===""?null:parseFloat(raw);
+    const diff = (sys!==undefined && p!==null) ? +(p-sys).toFixed(2) : null;
+    return {name, sys, p, diff};
+  });
+}
+async function openResultDetail(id){
+  const x = doneCounts.find(r=>r.id===id); if(!x) return;
+  openResult = x;
+  $("resultDetailCard").classList.remove("hidden");
+  $("resultDetailTitle").textContent = `${x.empName} — ${x.warehouse}`;
+  const rows = await resultRows(x);
+  $("resultDetailBody").innerHTML = rows.map(r=>{
+    const dTxt = r.diff===null?"—":r.diff===0?'<span class="zero num">0</span>':`<span class="num ${r.diff>0?"pos":"neg"}">${r.diff>0?"+":""}${fmt(r.diff)}</span>`;
+    return `<tr><td>${esc(r.name)}</td><td class="num">${r.sys===undefined?"—":fmt(r.sys)}</td><td class="num">${r.p===null?"—":fmt(r.p)}</td><td>${dTxt}</td></tr>`;
+  }).join("");
+  $("resultDetailCard").scrollIntoView({behavior:"smooth"});
+}
+async function downloadResultPDF(){
+  if (!openResult) return;
+  const x = openResult;
+  const rows = (await resultRows(x)).map(r=>`
+    <tr><td>${esc(r.name)}</td><td>${r.sys===undefined?"—":fmt(r.sys)}</td><td>${r.p===null?"—":fmt(r.p)}</td>
+    <td style="color:${r.diff>0?"#059669":r.diff<0?"#dc2626":"#555"}">${r.diff===null?"—":(r.diff>0?"+":"")+fmt(r.diff)}</td></tr>`).join("");
+  const rtl = LANG==="ar" ? 'dir="rtl"' : 'dir="ltr"';
+  const w = window.open("", "_blank");
+  w.document.write(`<!DOCTYPE html><html lang="${LANG}" ${rtl}><head><meta charset="UTF-8">
+  <title>${t("rep_title")} - ${esc(x.empName)}</title>
+  <style>
+    body{font-family:'Segoe UI',Tahoma,sans-serif;padding:30px;color:#111}
+    h1{font-size:20px;color:#4c1d95} .meta{color:#555;font-size:13px;margin-bottom:18px;line-height:1.9}
+    table{width:100%;border-collapse:collapse;font-size:12.5px}
+    th{background:#4c1d95;color:#fff;padding:8px;text-align:${LANG==="ar"?"right":"left"}}
+    td{padding:7px 8px;border-bottom:1px solid #ddd}
+    tr:nth-child(even) td{background:#f7f5fb}
+  </style></head><body>
+  <h1>${t("rep_title")}</h1>
+  <div class="meta">
+    ${t("rep_emp")}: <b>${esc(x.empName)}</b> (${x.empCode})<br>
+    ${t("rep_wh")}: <b>${esc(x.warehouse)}</b><br>
+    ${t("rep_date")}: ${new Date(x.submittedAt).toLocaleString("en-GB")} · ${t("rep_items")}: ${x.items.length}
+  </div>
+  <table><thead><tr><th>${t("th_product")}</th><th>${t("th_sys_qty")}</th><th>${t("th_phys_qty")}</th><th>${t("th_diff")}</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+
+/* ---------- سجل تواريخ الانتهاء (المصدر الموحد للجميع) ---------- */
+let expiryReg = [], expPendingTasks = [];
+function fillExpirySelectors(){
+  const ls = $("expLoc"); if(!ls) return;
+  ls.innerHTML = latestSnap ? latestSnap.locations.map(l=>`<option>${esc(l)}</option>`).join("") : `<option value="">—</option>`;
+  fillExpProducts();
+}
+function fillExpProducts(){
+  const ps = $("expProduct"); if(!ps) return;
+  const loc = $("expLoc").value;
+  ps.innerHTML = (latestSnap && loc)
+    ? latestSnap.items.filter(i=>i.loc===loc).map(i=>`<option>${esc(i.name)}</option>`).join("")
+    : `<option value="">—</option>`;
+}
+async function adminSetExpiry(){
+  const loc = $("expLoc").value, name = $("expProduct").value, date = $("expDate").value;
+  if (!loc || !name || !date) return toast(t("t_pick_all"));
+  await DB.set("expiry_registry", docId(loc+"__"+name), {loc, name, date, by: t("admin_name"), updatedAt: Date.now()});
+  $("expDate").value = "";
+  toast(t("t_exp_saved"));
+  loadExpiry();
+}
+async function adminEditExpiry(id, date){
+  if (!date) return;
+  const cur = await DB.get("expiry_registry", id); if(!cur) return;
+  await DB.set("expiry_registry", id, {...cur, date, by: t("admin_name"), updatedAt: Date.now()});
+  toast(t("t_exp_saved"));
+  loadExpiry();
+}
+async function loadExpiry(){ expiryReg = await DB.list("expiry_registry"); renderExpiry(); renderExpiryEmp(); }
+function expiryRows(q){
+  const now = new Date();
+  return expiryReg
+    .filter(r=>!q || r.name.toLowerCase().includes(q) || r.loc.toLowerCase().includes(q))
+    .sort((a,b)=>a.date<b.date?-1:1)
+    .map(r=>{
+      const days = Math.ceil((new Date(r.date)-now)/86400000);
+      const label = days<0 ? t("expired_since",{d:Math.abs(days)}) : `${days} ${t("days")}${days<=30?" ⚠️":""}`;
+      const style = days<0 ? "color:var(--red)" : days<=30 ? "color:var(--amber)" : "color:var(--green)";
+      return {...r, days, label, style};
+    });
+}
+function renderExpiry(){
+  const body = $("expBody"); if(!body) return;
+  const rows = expiryRows(($("expSearch")?.value||"").toLowerCase());
+  body.innerHTML = rows.length ? rows.map(r=>`
+    <tr><td>${esc(r.name)}</td><td><span class="pill">${esc(r.loc)}</span></td>
+    <td class="num">${r.date}</td><td><span class="num" style="${r.style}">${r.label}</span></td>
+    <td>${esc(r.by||"—")}</td>
+    <td><input type="date" value="${r.date}" style="padding:5px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:#fff" onchange="adminEditExpiry('${r.id}', this.value)"></td></tr>`
+  ).join("") : `<tr><td colspan="6" class="empty">${t("no_exp")}</td></tr>`;
+}
+function renderExpiryEmp(){
+  const body = $("expBodyEmp"); if(!body) return;
+  const rows = expiryRows(($("expSearchEmp")?.value||"").toLowerCase());
+  body.innerHTML = rows.length ? rows.map(r=>`
+    <tr><td>${esc(r.name)}</td><td><span class="pill">${esc(r.loc)}</span></td>
+    <td class="num">${r.date}</td><td><span class="num" style="${r.style}">${r.label}</span></td></tr>`
+  ).join("") : `<tr><td colspan="4" class="empty">${t("no_exp")}</td></tr>`;
+}
+/* تسجيلات الموظفين بانتظار اعتماد المشرف */
+async function loadExpPending(){
+  expPendingTasks = (await DB.list("tasks")).filter(x=>x.status==="done" && x.type==="expiry" && !x.approved).sort((a,b)=>b.submittedAt-a.submittedAt);
+  renderExpPending();
+}
+function renderExpPending(){
+  const el = $("expPendingList"); if(!el) return;
+  el.innerHTML = expPendingTasks.length ? expPendingTasks.map(x=>{
+    const n = Object.values(x.results||{}).filter(v=>v).length;
+    return `<div class="taskItem">
+      <div><b>${esc(x.empName)}</b> — ${esc(x.warehouse)}
+        <div style="font-size:12px;color:var(--muted)">${t("submitted")}: ${new Date(x.submittedAt).toLocaleString("en-GB")} · ${n} ${t("dates_count")}</div>
+      </div>
+      <button class="btn green small" onclick="approveExpiryTask('${x.id}')">${t("approve_publish")}</button>
+    </div>`;
+  }).join("") : `<div class="empty">${t("no_pending_exp")}</div>`;
+}
+async function approveExpiryTask(id){
+  const x = expPendingTasks.find(r=>r.id===id); if(!x) return;
+  for (const [name, date] of Object.entries(x.results||{})){
+    if (!date) continue;
+    await DB.set("expiry_registry", docId(x.warehouse+"__"+name), {loc:x.warehouse, name, date, by:x.empName, updatedAt: Date.now()});
+  }
+  await DB.set("tasks", x.id, {...x, approved: true});
+  toast(t("t_exp_pub"));
+  loadExpPending(); loadExpiry();
+}
+
+/* ---------- واجهة الموظف: المهام ---------- */
+let myTasks = [], myOpenTask = null;
+async function loadMyTasks(){
+  myTasks = (await DB.list("tasks")).filter(x=>x.empCode===session.code).sort((a,b)=>b.createdAt-a.createdAt);
+  renderMyTasks();
+}
+function renderMyTasks(){
+  const el = $("myTasks"); if(!el) return;
+  el.innerHTML = myTasks.length ? myTasks.map(x=>`
+    <div class="taskItem">
+      <div><b>${x.type==="count"?t("count_task")+" 📋":t("expiry_task")+" 📅"}</b> — ${esc(x.warehouse)}
+        <div style="font-size:12px;color:var(--muted)">${x.createdOn} · ${x.items.length} ${t("items")}</div>
+      </div>
+      ${x.status==="done"
+        ? `<span class="pill g">${t("sent_pill")}</span>`
+        : `<button class="btn small" onclick="openFill('${x.id}')">${t("start_fill")}</button>`}
+    </div>`).join("") : `<div class="empty">${t("no_my_tasks")}</div>`;
+}
+function openFill(id){
+  const x = myTasks.find(r=>r.id===id); if(!x) return;
+  myOpenTask = x;
+  $("fillCard").classList.remove("hidden");
+  const isCount = x.type==="count";
+  $("fillTitle").textContent = (isCount?t("count_task"):t("expiry_task")) + " — " + x.warehouse;
+  $("fillSub").textContent = isCount ? t("fill_count_sub") : t("fill_exp_sub");
+  $("fillHead").innerHTML = `<tr><th>${t("th_product")}</th><th style="width:190px">${isCount?t("phys_qty"):t("th_exp_date")}</th></tr>`;
+  const inputStyle = "width:100%;padding:8px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:#fff";
+  $("fillBody").innerHTML = x.items.map(name=>`
+    <tr><td>${esc(name)}</td><td>
+      ${isCount
+        ? `<input type="number" step="any" min="0" data-name="${esc(name)}" class="fillInput" style="${inputStyle};direction:ltr" placeholder="0">`
+        : `<input type="date" data-name="${esc(name)}" class="fillInput" style="${inputStyle}">`}
+    </td></tr>`).join("");
+  $("fillCard").scrollIntoView({behavior:"smooth"});
+}
+async function submitTask(){
+  if (!myOpenTask) return;
+  const results = {};
+  document.querySelectorAll(".fillInput").forEach(inp=>{ results[inp.dataset.name] = inp.value; });
+  const filled = Object.values(results).filter(v=>v!=="").length;
+  if (!filled) return toast(t("t_fill_one"));
+  if (!confirm(t("c_submit",{a:filled,b:myOpenTask.items.length}))) return;
+  await DB.set("tasks", myOpenTask.id, {
+    ...myOpenTask, results, status:"done", submittedAt: Date.now(), snapshotDate: todayKey()
+  });
+  $("fillCard").classList.add("hidden");
+  myOpenTask = null;
+  toast(t("t_sent_admin"));
+  loadMyTasks();
+}
+
+/* ---------- تشغيل ---------- */
+applyLang();
+</script>
+</body>
+</html>
