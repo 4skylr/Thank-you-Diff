@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#08070d">
+<title>Noir Cinema — Inventory OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&family=Tajawal:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#07060c; --bg2:#0d0b16; --card:#12101d; --card2:#171327; --glass:rgba(18,16,29,.72);
+  --line:rgba(139,92,246,.14); --line2:rgba(139,92,246,.28);
+  --p1:#8b5cf6; --p2:#6d28d9; --p3:#4c1d95; --lav:#c4b5fd; --lav2:#ddd6fe;
+  --text:#efecfa; --muted:#8d86a8; --faint:#5e5877;
+  --green:#34d399; --red:#f87171; --amber:#fbbf24; --gold:#f5c542;
+  --r:18px; --r2:13px;
+  --sh:0 24px 60px -20px rgba(0,0,0,.7);
+  --glow:0 0 40px rgba(139,92,246,.22);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Tajawal',system-ui,sans-serif;
+  background:
+    radial-gradient(1000px 560px at 88% -12%, rgba(139,92,246,.13), transparent 60%),
+    radial-gradient(760px 520px at -6% 108%, rgba(76,29,149,.17), transparent 60%),
+    var(--bg);
+  color:var(--text); min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:'Cairo',sans-serif;letter-spacing:.2px}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+.hidden{display:none!important}
+::selection{background:rgba(139,92,246,.4)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#2b2344;border-radius:99px}
+::-webkit-scrollbar-track{background:transparent}
+
+.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.ic.lg{width:26px;height:26px}
+.ic.xl{width:38px;height:38px;stroke-width:1.5}
+
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes growBar{from{width:0}}
+@keyframes popIn{0%{opacity:0;transform:scale(.92)}100%{opacity:1;transform:scale(1)}}
+.rise{animation:rise .5s var(--ease) both}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- floating controls ---------- */
+#langFloat{position:fixed;top:16px;inset-inline-start:16px;z-index:120}
+.langBtn{
+  position:relative;display:inline-flex;align-items:center;gap:8px;
+  padding:9px 17px;border-radius:99px;font-weight:800;font-size:12.5px;letter-spacing:1.5px;
+  color:#fff;background:var(--glass);border:none;backdrop-filter:blur(12px);
+  transition:box-shadow .25s var(--ease), transform .15s var(--ease);
+}
+.langBtn::before{
+  content:"";position:absolute;inset:0;border-radius:99px;padding:1.3px;
+  background:linear-gradient(120deg,var(--p1),var(--lav) 45%,var(--p3));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
+}
+.langBtn:hover{box-shadow:var(--glow);transform:translateY(-1px)}
+.langBtn:active{transform:scale(.96)}
+#waFloat{
+  position:fixed;bottom:18px;inset-inline-start:18px;z-index:120;
+  width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#22c55e,#0e7a45);color:#fff;text-decoration:none;
+  box-shadow:0 10px 30px rgba(34,197,94,.35), inset 0 1px 0 rgba(255,255,255,.25);
+  transition:transform .2s var(--ease), box-shadow .2s;
+}
+#waFloat:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 16px 40px rgba(34,197,94,.45)}
+#waFloat .ic{width:26px;height:26px;fill:currentColor;stroke:none}
+
+/* ---------- login ---------- */
+#loginView{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:26px 18px 90px}
+.clockRing{
+  width:288px;height:288px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  border:1px solid var(--line);
+  background:radial-gradient(circle at 50% 28%, rgba(139,92,246,.17), rgba(13,11,22,.94) 66%);
+  box-shadow:var(--glow), inset 0 0 50px rgba(139,92,246,.07);
+  position:relative;margin:0 auto;animation:popIn .6s var(--ease) both;
+}
+.clockRing::before{
+  content:"";position:absolute;inset:-11px;border-radius:50%;
+  border:1px solid rgba(139,92,246,.3);border-top-color:var(--p1);
+  animation:spin 14s linear infinite;
+}
+.clockRing::after{
+  content:"";position:absolute;inset:-22px;border-radius:50%;
+  border:1px dashed rgba(139,92,246,.12);
+}
+#bigTime{font-family:'Space Grotesk','Cairo',monospace;font-size:52px;font-weight:700;letter-spacing:1px;color:#fff;direction:ltr;font-variant-numeric:tabular-nums}
+#bigDate{color:var(--lav);font-size:14px;padding:0 18px;text-align:center}
+#bigWeek{font-size:11.5px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.brand{display:flex;align-items:center;gap:12px;animation:rise .6s .1s var(--ease) both}
+.brandMark{
+  width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--p1),var(--p3));font-family:'Cairo';font-weight:900;font-size:21px;color:#fff;
+  box-shadow:0 8px 24px rgba(139,92,246,.4), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.brandTxt{font-family:'Cairo';font-size:22px;font-weight:900}
+.brandTxt span{background:linear-gradient(90deg,var(--p1),var(--lav));-webkit-background-clip:text;background-clip:text;color:transparent}
+.loginCard{
+  width:min(380px,94vw);background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:28px;text-align:center;box-shadow:var(--sh);
+  animation:rise .6s .18s var(--ease) both;
+}
+.loginCard p{color:var(--muted);font-size:13.5px;margin:7px 0 18px}
+#pinInput{
+  width:100%;padding:15px;text-align:center;font-size:26px;letter-spacing:12px;
+  background:var(--bg2);border:1px solid var(--line2);border-radius:14px;color:#fff;
+  direction:ltr;font-family:'Space Grotesk',monospace;transition:box-shadow .2s,border-color .2s;
+}
+#pinInput:focus{outline:none;border-color:var(--p1);box-shadow:0 0 0 4px rgba(139,92,246,.18)}
+#loginErr{color:var(--red);font-size:13px;margin-top:10px;min-height:18px}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 22px;border-radius:13px;border:none;font-weight:700;font-size:14.5px;
+  background:linear-gradient(135deg,var(--p1),var(--p2) 70%);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 8px 22px -6px rgba(124,58,237,.5);
+  transition:transform .16s var(--ease), box-shadow .2s, filter .15s;
+}
+.btn:hover{filter:brightness(1.12);transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 12px 28px -6px rgba(124,58,237,.6)}
+.btn:active{transform:scale(.965)}
+.btn:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
+.btn.ghost{background:rgba(139,92,246,.06);border:1px solid var(--line2);color:var(--lav);box-shadow:none}
+.btn.ghost:hover{background:rgba(139,92,246,.13)}
+.btn.small{padding:8px 14px;font-size:13px;border-radius:11px}
+.btn.danger{background:linear-gradient(135deg,#dc2626,#7f1d1d);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 8px 22px -8px rgba(220,38,38,.5)}
+.btn.green{background:linear-gradient(135deg,#10b981,#065f46);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 8px 22px -8px rgba(16,185,129,.5)}
+.btn.full{width:100%;margin-top:14px}
+
+/* ---------- shell ---------- */
+.app{display:none;min-height:100vh;padding-bottom:70px}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:12px 18px;border-bottom:1px solid var(--line);
+  background:var(--glass);backdrop-filter:blur(16px) saturate(1.3);
+  position:sticky;top:0;z-index:60;
+}
+.topbar .who{display:flex;align-items:center;gap:12px;min-width:0}
+.avatar{
+  width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--p1),var(--p3));font-weight:900;font-family:'Cairo';font-size:18px;
+  overflow:hidden;position:relative;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.photoBtn{
+  position:absolute;inset:auto 0 0 0;height:17px;background:rgba(0,0,0,.66);
+  border:none;color:#fff;display:flex;align-items:center;justify-content:center;
+}
+.photoBtn .ic{width:11px;height:11px}
+.who .name{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+.who .role{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.cloudDot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.cloudDot.on{background:var(--green);box-shadow:0 0 8px rgba(52,211,153,.8)}
+.cloudDot.off{background:var(--amber);box-shadow:0 0 8px rgba(251,191,36,.8)}
+.miniClock{text-align:center;line-height:1.35}
+.miniClock .t{font-family:'Space Grotesk',monospace;font-weight:700;font-size:19px;direction:ltr;color:#fff;font-variant-numeric:tabular-nums}
+.miniClock .d{font-size:11px;color:var(--lav)}
+.ptsChip{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:99px;
+  background:linear-gradient(135deg,rgba(245,197,66,.16),rgba(245,197,66,.05));
+  border:1px solid rgba(245,197,66,.35);color:var(--gold);font-weight:800;font-size:13px;
+  font-family:'Space Grotesk','Cairo';
+}
+.tabs{display:flex;gap:5px;padding:14px 18px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:12px;
+  border:1px solid transparent;background:transparent;color:var(--muted);
+  font-weight:700;font-size:13.5px;flex-shrink:0;white-space:nowrap;
+  transition:color .2s,background .2s,border-color .2s;position:relative;
+}
+.tab:hover{color:var(--lav2);background:rgba(139,92,246,.06)}
+.tab.active{background:linear-gradient(135deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border-color:var(--line2);color:var(--lav2)}
+.tab .ic{width:15px;height:15px}
+.badge{
+  min-width:19px;height:19px;padding:0 5px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;font-size:11px;font-weight:800;font-family:'Space Grotesk';
+}
+.panel{padding:20px;max-width:1160px;margin:0 auto}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:22px;margin-bottom:18px;box-shadow:0 14px 40px -18px rgba(0,0,0,.55);
+  transition:border-color .25s;
+}
+.card:hover{border-color:var(--line2)}
+.card h2{font-size:17.5px;margin-bottom:5px;display:flex;align-items:center;gap:9px}
+.card h2 .ic{color:var(--p1)}
+.card .sub{color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.7}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:840px){.grid2{grid-template-columns:1fr}}
+
+/* ---------- forms & tables ---------- */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;color:var(--lav);margin-bottom:6px;font-weight:700;letter-spacing:.2px}
+.field input,.field select,.cellInput{
+  width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--line2);
+  border-radius:11px;color:#fff;font-size:14px;transition:box-shadow .2s,border-color .2s;
+}
+.field input:focus,.field select:focus,.cellInput:focus{outline:none;border-color:var(--p1);box-shadow:0 0 0 4px rgba(139,92,246,.16)}
+.cellInput{padding:8px 10px;border-radius:9px;font-size:13px}
+.drop{
+  border:1.6px dashed var(--line2);border-radius:var(--r);padding:30px 16px;text-align:center;
+  color:var(--muted);transition:.25s;cursor:pointer;background:rgba(139,92,246,.02);
+}
+.drop:hover,.drop.over{border-color:var(--p1);color:var(--lav);background:rgba(139,92,246,.06);box-shadow:inset 0 0 40px rgba(139,92,246,.05)}
+.drop .ic{color:var(--p1);margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{
+  text-align:start;padding:11px 12px;color:var(--lav);font-weight:700;font-size:12px;letter-spacing:.4px;
+  border-bottom:1px solid var(--line);background:rgba(139,92,246,.05);white-space:nowrap;
+  position:sticky;top:0;backdrop-filter:blur(6px);
+}
+td{padding:9.5px 12px;border-bottom:1px solid rgba(139,92,246,.07)}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:rgba(139,92,246,.045)}
+.num{direction:ltr;text-align:left;font-family:'Space Grotesk','Cairo';font-weight:600;font-variant-numeric:tabular-nums}
+[dir="ltr"] .num{text-align:right}
+.pos{color:var(--green)}.neg{color:var(--red)}.zero{color:var(--faint)}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;padding:3.5px 12px;border-radius:99px;font-size:11.5px;font-weight:700;
+  background:rgba(139,92,246,.13);color:var(--lav);border:1px solid rgba(139,92,246,.28);white-space:nowrap;
+}
+.pill.g{background:rgba(52,211,153,.1);color:var(--green);border-color:rgba(52,211,153,.3)}
+.pill.a{background:rgba(251,191,36,.1);color:var(--amber);border-color:rgba(251,191,36,.3)}
+.pill.r{background:rgba(248,113,113,.1);color:var(--red);border-color:rgba(248,113,113,.3)}
+.tableWrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:14px;-webkit-overflow-scrolling:touch}
+.statRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:18px}
+.stat{
+  background:linear-gradient(160deg,var(--card2),var(--card));border:1px solid var(--line);
+  border-radius:15px;padding:17px;position:relative;overflow:hidden;
+}
+.stat::after{content:"";position:absolute;top:0;inset-inline-start:0;width:38px;height:2.5px;background:linear-gradient(90deg,var(--p1),transparent);border-radius:2px}
+.stat .v{font-family:'Space Grotesk','Cairo';font-weight:700;font-size:23px;color:#fff;direction:ltr;text-align:end;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11.5px;color:var(--muted);margin-top:5px}
+.toolRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.searchBox{flex:1;min-width:160px;padding:10px 14px;background:var(--bg2);border:1px solid var(--line2);border-radius:11px;color:#fff;transition:box-shadow .2s,border-color .2s}
+.searchBox:focus{outline:none;border-color:var(--p1);box-shadow:0 0 0 4px rgba(139,92,246,.16)}
+.empty{padding:38px 14px;text-align:center;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty .ic{width:32px;height:32px;opacity:.5}
+.taskItem{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:13px 15px;border:1px solid var(--line);border-radius:14px;margin-bottom:10px;
+  background:var(--card2);transition:border-color .2s,transform .15s;
+}
+.taskItem:hover{border-color:var(--line2)}
+.toast{
+  position:fixed;bottom:22px;inset-inline-end:22px;z-index:130;padding:14px 20px;border-radius:14px;
+  background:var(--card2);border:1px solid var(--line2);color:#fff;font-weight:700;font-size:14px;
+  box-shadow:var(--sh);display:none;max-width:86vw;animation:rise .35s var(--ease);
+}
+.banner{
+  display:flex;gap:10px;align-items:flex-start;padding:13px 16px;border-radius:14px;font-size:13px;margin-bottom:16px;line-height:1.8;
+  background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.3);color:var(--amber);
+}
+.banner.err{background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.35);color:var(--red)}
+.banner code{background:rgba(0,0,0,.35);padding:1px 7px;border-radius:6px;font-size:12px;direction:ltr;display:inline-block}
+
+/* ---------- leaderboard ---------- */
+.lbRow{
+  display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--line);
+  border-radius:15px;margin-bottom:10px;background:var(--card2);position:relative;overflow:hidden;
+  animation:rise .45s var(--ease) both;
+}
+.lbRow .bar{position:absolute;inset-inline-start:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(139,92,246,.15),transparent);animation:growBar .9s var(--ease) both}
+.lbRow>*{position:relative;z-index:1}
+.lbRank{
+  width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  font-family:'Space Grotesk','Cairo';font-weight:700;font-size:14px;background:var(--bg2);border:1px solid var(--line);flex-shrink:0;color:var(--muted);
+}
+.lbRow.r1 .lbRank{background:linear-gradient(135deg,#f5c542,#a8791a);color:#1a1005;border:none;box-shadow:0 4px 14px rgba(245,197,66,.4)}
+.lbRow.r2 .lbRank{background:linear-gradient(135deg,#e2e2ec,#8f8fa3);color:#15151c;border:none}
+.lbRow.r3 .lbRank{background:linear-gradient(135deg,#d08a4e,#8a5a2b);color:#1d0f04;border:none}
+.lbAvatar{width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--p1),var(--p3));display:flex;align-items:center;justify-content:center;font-weight:900;font-family:'Cairo';flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.lbAvatar img{width:100%;height:100%;object-fit:cover}
+.lbBody{flex:1;min-width:0}
+.lbName{font-weight:700;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbPts{font-size:11px;color:var(--gold);font-weight:700;font-family:'Space Grotesk';margin-top:2px}
+.lbAmt{font-family:'Space Grotesk','Cairo';font-weight:700;font-size:16px;direction:ltr;color:var(--lav2);flex-shrink:0;font-variant-numeric:tabular-nums}
+.lbAmt small{font-size:10.5px;color:var(--muted);font-weight:500}
+
+/* ---------- footer ---------- */
+.siteFoot{
+  text-align:center;padding:26px 16px 84px;color:var(--faint);font-size:12px;letter-spacing:.6px;
+  font-family:'Space Grotesk',sans-serif;
+}
+.siteFoot b{color:var(--lav);font-weight:700}
+
+/* ---------- mobile ---------- */
+@media(max-width:640px){
+  .panel{padding:12px}
+  .card{padding:16px;border-radius:15px}
+  .clockRing{width:232px;height:232px}
+  #bigTime{font-size:40px}
+  .topbar{padding:10px 12px}
+  .miniClock .d{display:none}
+  th,td{padding:8.5px 8px;font-size:12.5px}
+  .stat .v{font-size:18px}
+  .lbAmt{font-size:13.5px}
+  #langFloat{top:12px;inset-inline-start:12px}
+  #waFloat{width:46px;height:46px;bottom:14px;inset-inline-start:14px}
+  .tabs{padding:12px 12px 0}
+  .who .name{max-width:34vw;font-size:13.5px}
+}
+@media print{body *{visibility:hidden}}
+</style>
+</head>
+<body>
+
+<!-- SVG icon sprite -->
+<svg style="display:none" aria-hidden="true"><defs>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15v-4"/><path d="M12 15V7"/><path d="M17 15v-6"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H5a2 2 0 0 0 0 4h2"/><path d="M17 6h2a2 2 0 0 1 0 4h-2"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><circle cx="17.4" cy="9.4" r="2.4"/><path d="M16.4 15.7a5.2 5.2 0 0 1 5 4.3"/></symbol>
+<symbol id="i-clip" viewBox="0 0 24 24"><rect x="6" y="4.5" width="12" height="17" rx="2"/><path d="M9 4.5a3 3 0 0 1 6 0"/><path d="M9 11h6"/><path d="M9 15h6"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M3 10.5h18"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19L12 3.5z"/><path d="M12 10v4.5"/><path d="M12 17.6h.01"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></symbol>
+<symbol id="i-swap" viewBox="0 0 24 24"><path d="M17 3l4 4-4 4"/><path d="M21 7H8"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+<symbol id="i-wa" viewBox="0 0 32 32"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.8 5 2.3 7L4.5 28l6.3-1.6c1.6.9 3.4 1.3 5.2 1.3 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm0 21.6c-1.6 0-3.2-.4-4.6-1.2l-.3-.2-3.7 1 1-3.6-.2-.3c-1.3-1.6-2-3.6-2-5.6 0-5.4 4.4-9.8 9.8-9.8s9.8 4.4 9.8 9.8-4.4 9.9-9.8 9.9zm5.4-7.3c-.3-.2-1.8-.9-2-1-.3-.1-.5-.2-.7.2s-.8 1-1 1.2c-.2.2-.4.2-.7.1-.3-.2-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.5-.6c.2-.2.2-.4.3-.6.1-.2 0-.4 0-.6-.1-.2-.7-1.7-1-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7s1.2 3.1 1.3 3.3c.2.2 2.3 3.5 5.5 4.9.8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z" fill-rule="evenodd"/></symbol>
+</defs></svg>
+
+<div id="langFloat"><button class="langBtn" onclick="toggleLang()"><svg class="ic" style="width:14px;height:14px"><use href="#i-spark"/></svg><span id="langLbl">EN</span></button></div>
+<a id="waFloat" href="https://wa.me/966561105517" target="_blank" rel="noopener" title="Contact Skylr on WhatsApp" aria-label="WhatsApp"><svg class="ic"><use href="#i-wa"/></svg></a>
+
+<!-- ================= LOGIN ================= -->
+<div id="loginView">
+  <div class="clockRing">
+    <div id="bigTime">--:--:--</div>
+    <div id="bigDate">—</div>
+    <div id="bigWeek">—</div>
+  </div>
+  <div class="brand"><div class="brandMark">N</div><div class="brandTxt" data-i18n="brand">نوار <span>سينما</span></div></div>
+  <div class="loginCard">
+    <h2 data-i18n="login_title">تسجيل الدخول</h2>
+    <p data-i18n="login_sub">أدخل رمز الأدمن أو رمز الموظف المكوّن من 4 أرقام</p>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off">
+    <button class="btn full" onclick="doLogin()"><span data-i18n="login_btn">دخول</span></button>
+    <div id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ================= ADMIN ================= -->
+<div id="adminView" class="app">
+  <div class="topbar">
+    <div class="who">
+      <div class="avatar">A</div>
+      <div>
+        <div class="name" data-i18n="admin_name">المشرف العام</div>
+        <div class="role"><span class="cloudDot off" id="cloudDot"></span><span data-i18n="admin_role">صلاحيات كاملة</span></div>
+      </div>
+    </div>
+    <div class="miniClock"><div class="t" id="miniTime">--:--</div><div class="d" id="miniDate">—</div></div>
+    <button class="btn ghost small" onclick="logout()"><svg class="ic"><use href="#i-out"/></svg><span data-i18n="logout">خروج</span></button>
+  </div>
+  <div class="tabs" id="adminTabs">
+    <button class="tab active" data-p="pInv" onclick="showTab(this)"><svg class="ic"><use href="#i-box"/></svg><span data-i18n="tab_inv">الجرد اليومي</span></button>
+    <button class="tab" data-p="pRefill" onclick="showTab(this)"><svg class="ic"><use href="#i-swap"/></svg><span data-i18n="tab_refill">التعبئة والنقل</span><span class="badge hidden" id="alertBadge">0</span></button>
+    <button class="tab" data-p="pSales" onclick="showTab(this)"><svg class="ic"><use href="#i-chart"/></svg><span data-i18n="tab_sales">المبيعات</span></button>
+    <button class="tab" data-p="pTop" onclick="showTab(this)"><svg class="ic"><use href="#i-trophy"/></svg><span data-i18n="tab_top">أفضل البائعين</span></button>
+    <button class="tab" data-p="pEmp" onclick="showTab(this)"><svg class="ic"><use href="#i-users"/></svg><span data-i18n="tab_emp">الموظفون</span></button>
+    <button class="tab" data-p="pTasks" onclick="showTab(this)"><svg class="ic"><use href="#i-send"/></svg><span data-i18n="tab_tasks">المهام</span></button>
+    <button class="tab" data-p="pResults" onclick="showTab(this)"><svg class="ic"><use href="#i-clip"/></svg><span data-i18n="tab_results">نتائج الجرد</span></button>
+    <button class="tab" data-p="pExpiry" onclick="showTab(this)"><svg class="ic"><use href="#i-cal"/></svg><span data-i18n="tab_expiry">تواريخ الانتهاء</span></button>
+  </div>
+
+  <div class="panel" id="adminPanel">
+    <div id="fbBanner" class="banner hidden"><svg class="ic"><use href="#i-alert"/></svg><span data-i18n="fb_banner">تعذّر الاتصال بـ Firebase — البيانات محفوظة محلياً وستُزامَن تلقائياً عند عودة الاتصال.</span></div>
+    <div id="rulesBanner" class="banner err hidden"><svg class="ic"><use href="#i-alert"/></svg><span data-i18n="rules_banner">Firestore يرفض الحفظ (صلاحيات). افتح Firebase Console → Firestore Database → أنشئ القاعدة إن لم تكن موجودة → تبويب Rules واسمح بالقراءة والكتابة: <code>allow read, write: if true;</code> ثم Publish. بياناتك الحالية محفوظة محلياً وسترتفع تلقائياً بعد التصحيح.</span></div>
+
+    <!-- INVENTORY -->
+    <div id="pInv">
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-up"/></svg><span data-i18n="inv_title">رفع تقرير الجرد (PDF)</span></h2>
+        <div class="sub" data-i18n="inv_sub">ارفع ملف Current Stock Position Report — تُقرأ المستودعات تلقائياً وتُحفظ الكميات بتاريخ اليوم مع الاحتفاظ بكل الجردات السابقة، ويُحسب الفرق عن آخر جرد.</div>
+        <div class="drop" id="invDrop" onclick="document.getElementById('invFile').click()">
+          <svg class="ic xl"><use href="#i-box"/></svg>
+          <div data-i18n="inv_drop">اسحب ملف الجرد هنا أو اضغط للاختيار</div>
+        </div>
+        <input type="file" id="invFile" accept="application/pdf" class="hidden">
+        <div id="invStatus" style="margin-top:12px;font-size:13px;color:var(--lav)"></div>
+      </div>
+      <div class="statRow" id="invStats"></div>
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-box"/></svg><span data-i18n="inv_table_title">المخزون الحالي والفروقات</span></h2>
+        <div class="sub" id="invMeta"></div>
+        <div class="toolRow">
+          <input class="searchBox" id="invSearch" data-i18n-ph="search_product" placeholder="بحث عن منتج..." oninput="renderInv()">
+          <select class="searchBox" style="flex:0;min-width:190px" id="invLocFilter" onchange="renderInv()"></select>
+        </div>
+        <div class="tableWrap"><table id="invTable">
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="th_qty_now">الكمية الحالية</th><th data-i18n="th_qty_prev">الجرد السابق</th><th data-i18n="th_diff">الفرق</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- REFILL & TRANSFER -->
+    <div id="pRefill" class="hidden">
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-alert"/></svg><span data-i18n="rf_alert_title">منتجات تحتاج تعبئة / نقل</span></h2>
+        <div class="sub" data-i18n="rf_alert_sub">تُحدَّث تلقائياً مع كل ملف جرد: أي منتج في الريفل (الكونسيشن) أقل من 7 حبات يُعلَّم فوراً، أو أقل من السيلز سبيس الذي حددته. وتظهر الكمية المتوفرة في الستور والميني ستور للنقل منها.</div>
+        <div class="tableWrap"><table>
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="th_qty_now">الكمية الحالية</th><th data-i18n="rf_th_space">السيلز سبيس</th><th data-i18n="rf_th_need">المطلوب نقله</th><th data-i18n="rf_th_avail">متوفر للنقل</th></tr></thead>
+          <tbody id="alertBody"></tbody>
+        </table></div>
+      </div>
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-swap"/></svg><span data-i18n="rf_set_title">تحديد السيلز سبيس لكل منتج</span></h2>
+        <div class="sub" data-i18n="rf_set_sub">اكتب سعة عرض كل منتج في المستودع — عند نزول الكمية تحته يظهر تنبيه بالنقص المطلوب. الافتراضي للريفل 7 حبات لأي منتج لم تحدده.</div>
+        <div class="grid2">
+          <div class="field"><label data-i18n="task_loc_lbl">المستودع</label><select id="parLoc" onchange="fillParProducts()"></select></div>
+          <div class="field"><label data-i18n="th_product">المنتج</label><select id="parProduct"></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label data-i18n="rf_th_space">السيلز سبيس (الحد الأدنى)</label><input type="number" min="1" step="1" id="parVal" placeholder="7" style="direction:ltr"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="savePar()"><svg class="ic"><use href="#i-check"/></svg><span data-i18n="rf_save">حفظ</span></button></div>
+        </div>
+        <div class="tableWrap" style="max-height:300px"><table>
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="rf_th_space">السيلز سبيس</th><th data-i18n="th_actions">إجراء</th></tr></thead>
+          <tbody id="parBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- SALES -->
+    <div id="pSales" class="hidden">
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-up"/></svg><span data-i18n="sales_title">تقرير المبيعات — من بداية السنة</span> <span class="pill" data-i18n="admin_only">للمشرف فقط</span></h2>
+        <div class="sub" data-i18n="sales_sub">ارفع ملف Sales RM Consumed لعرض حجم مبيعات المنتجات من أول السنة حتى الآن.</div>
+        <div class="drop" onclick="document.getElementById('salesFile').click()">
+          <svg class="ic xl"><use href="#i-chart"/></svg>
+          <div data-i18n="sales_drop">اسحب ملف المبيعات هنا أو اضغط للاختيار</div>
+        </div>
+        <input type="file" id="salesFile" accept="application/pdf" class="hidden">
+        <div id="salesStatus" style="margin-top:12px;font-size:13px;color:var(--lav)"></div>
+      </div>
+      <div class="statRow" id="salesStats"></div>
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-chart"/></svg><span data-i18n="sales_table_title">حجم المبيعات حسب المنتج</span></h2>
+        <div class="sub" id="salesMeta"></div>
+        <div class="toolRow"><input class="searchBox" id="salesSearch" data-i18n-ph="search" placeholder="بحث..." oninput="renderSales()"></div>
+        <div class="tableWrap"><table id="salesTable">
+          <thead><tr><th>#</th><th data-i18n="th_product">المنتج</th><th data-i18n="th_sold_qty">الكمية المباعة</th><th data-i18n="th_pct">نسبة من الإجمالي</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- TOP SELLERS -->
+    <div id="pTop" class="hidden">
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-up"/></svg><span data-i18n="top_up_title">رفع تقرير مبيعات الموظفين (PDF)</span></h2>
+        <div class="sub" data-i18n="top_up_sub">ارفع ملف Daily Transaction Summary — تُجمَع المبالغ لكل موظف وتُحدَّث اللوحة للجميع، وتُحسب نقاط المبيعات (10 نقاط لكل 500 ريال). رفع نفس الفترة يستبدلها ولا يكررها.</div>
+        <div class="drop" onclick="document.getElementById('topFile').click()">
+          <svg class="ic xl"><use href="#i-trophy"/></svg>
+          <div data-i18n="top_drop">اسحب ملف المعاملات هنا أو اضغط للاختيار</div>
+        </div>
+        <input type="file" id="topFile" accept="application/pdf" class="hidden">
+        <div id="topStatus" style="margin-top:12px;font-size:13px;color:var(--lav)"></div>
+      </div>
+      <div class="card rise">
+        <div class="toolRow" style="justify-content:space-between">
+          <h2><svg class="ic"><use href="#i-trophy"/></svg><span data-i18n="top_board_title">ترتيب أفضل البائعين حتى الآن</span></h2>
+          <button class="btn danger small" onclick="resetLeaderboard()"><svg class="ic"><use href="#i-x"/></svg><span data-i18n="top_reset">تصفير اللوحة</span></button>
+        </div>
+        <div class="sub" id="topMeta"></div>
+        <div id="lbAdmin"></div>
+      </div>
+    </div>
+
+    <!-- EMPLOYEES -->
+    <div id="pEmp" class="hidden">
+      <div class="grid2">
+        <div class="card rise">
+          <h2><svg class="ic"><use href="#i-users"/></svg><span data-i18n="emp_add_title">إضافة موظف</span></h2>
+          <div class="sub" data-i18n="emp_add_sub">اختر اسماً من قائمة الموظفين الجاهزة (من ملفات المبيعات) أو اكتب اسماً جديداً، ثم حدد رمز دخول من 4 أرقام.</div>
+          <div class="field"><label data-i18n="emp_name_lbl">اسم الموظف</label>
+            <input id="empName" list="staffList" data-i18n-ph="emp_name_ph" placeholder="اختر أو اكتب الاسم...">
+            <datalist id="staffList"></datalist>
+          </div>
+          <div class="field"><label data-i18n="emp_code_lbl">رمز الدخول (4 أرقام)</label>
+            <input id="empCode" maxlength="4" inputmode="numeric" placeholder="1234" style="direction:ltr;text-align:center;letter-spacing:6px">
+          </div>
+          <button class="btn" onclick="addEmployee()"><svg class="ic"><use href="#i-check"/></svg><span data-i18n="emp_add_btn">إضافة الموظف</span></button>
+        </div>
+        <div class="card rise">
+          <h2><svg class="ic"><use href="#i-users"/></svg><span data-i18n="emp_list_title">قائمة الموظفين</span></h2>
+          <div class="sub" data-i18n="emp_list_sub">الموظف يدخل برمزه ويظهر اسمه ونقاطه أعلى الشاشة.</div>
+          <div id="empList"></div>
+        </div>
+      </div>
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-cam"/></svg><span data-i18n="photo_appr_title">طلبات اعتماد الصور الشخصية</span></h2>
+        <div class="sub" data-i18n="photo_appr_sub">صور رفعها الموظفون وتنتظر موافقتك قبل ظهورها.</div>
+        <div id="photoApprovals"></div>
+      </div>
+    </div>
+
+    <!-- TASKS -->
+    <div id="pTasks" class="hidden">
+      <div class="grid2">
+        <div class="card rise">
+          <h2><svg class="ic"><use href="#i-send"/></svg><span data-i18n="task_new_title">إرسال مهمة لموظف</span></h2>
+          <div class="sub" data-i18n="task_new_sub">اختر الموظف والمستودع ونوع المهمة — تظهر للموظف أسماء المنتجات فقط. الجرد المطابق للنظام يمنح الموظف 10 نقاط عن كل منتج.</div>
+          <div class="field"><label data-i18n="task_emp_lbl">الموظف</label><select id="taskEmp"></select></div>
+          <div class="field"><label data-i18n="task_loc_lbl">المستودع</label><select id="taskLoc"></select></div>
+          <div class="field"><label data-i18n="task_type_lbl">نوع المهمة</label>
+            <select id="taskType">
+              <option value="count" data-i18n="task_type_count">جرد فيزيكل (عدّ الكميات)</option>
+              <option value="expiry" data-i18n="task_type_expiry">تسجيل تواريخ انتهاء المنتجات</option>
+            </select>
+          </div>
+          <button class="btn" onclick="createTask()"><svg class="ic"><use href="#i-send"/></svg><span data-i18n="task_send_btn">إرسال المهمة</span></button>
+        </div>
+        <div class="card rise">
+          <h2><svg class="ic"><use href="#i-clip"/></svg><span data-i18n="task_list_title">المهام المرسلة</span></h2>
+          <div class="sub" data-i18n="task_list_sub">حالة كل مهمة أول بأول.</div>
+          <div id="taskList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="pResults" class="hidden">
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-clip"/></svg><span data-i18n="res_title">نتائج الجرد الفيزيكل</span></h2>
+        <div class="sub" data-i18n="res_sub">مقارنة عدّ الموظف مع كميات النظام، مع نقاط الدقة وتحميل التقرير PDF باسم الموظف.</div>
+        <div id="resultsList"></div>
+      </div>
+      <div class="card hidden" id="resultDetailCard">
+        <div class="toolRow" style="justify-content:space-between">
+          <h2 id="resultDetailTitle"></h2>
+          <button class="btn green small" onclick="downloadResultPDF()"><svg class="ic"><use href="#i-down"/></svg><span data-i18n="res_pdf_btn">تحميل PDF</span></button>
+        </div>
+        <div class="sub" id="resultDetailMeta"></div>
+        <div class="tableWrap"><table>
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_sys_qty">كمية النظام</th><th data-i18n="th_phys_qty">العدّ الفيزيكل</th><th data-i18n="th_diff">الفرق</th></tr></thead>
+          <tbody id="resultDetailBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- EXPIRY -->
+    <div id="pExpiry" class="hidden">
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-clip"/></svg><span data-i18n="exp_pending_title">تسجيلات الموظفين بانتظار الاعتماد</span></h2>
+        <div class="sub" data-i18n="exp_pending_sub">مهام التواريخ التي أنهاها الموظفون — تحقق منها واعتمدها لتُنشر للجميع. التعديل والاعتماد للمشرف فقط.</div>
+        <div id="expPendingList"></div>
+      </div>
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-cal"/></svg><span data-i18n="exp_edit_title">إضافة / تعديل تاريخ انتهاء (المشرف)</span></h2>
+        <div class="sub" data-i18n="exp_edit_sub">اختر المستودع والمنتج وحدد التاريخ — يظهر مباشرة للجميع.</div>
+        <div class="grid2">
+          <div class="field"><label data-i18n="task_loc_lbl">المستودع</label><select id="expLoc" onchange="fillExpProducts()"></select></div>
+          <div class="field"><label data-i18n="th_product">المنتج</label><select id="expProduct"></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label data-i18n="th_exp_date">تاريخ الانتهاء</label><input type="date" id="expDate"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="adminSetExpiry()"><svg class="ic"><use href="#i-check"/></svg><span data-i18n="exp_save_btn">حفظ التاريخ</span></button></div>
+        </div>
+      </div>
+      <div class="card rise">
+        <h2><svg class="ic"><use href="#i-cal"/></svg><span data-i18n="exp_reg_title">سجل تواريخ الانتهاء — يظهر للجميع</span></h2>
+        <div class="sub"><span data-i18n="exp_reg_sub">الأقرب انتهاءً بالأعلى، مع تنبيه لما تبقى 30 يوماً أو أقل.</span> <span id="expCoverage" class="pill a"></span></div>
+        <div class="toolRow"><input class="searchBox" id="expSearch" data-i18n-ph="search" placeholder="بحث..." oninput="renderExpiry()"></div>
+        <div class="tableWrap"><table>
+          <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="th_exp_date">تاريخ الانتهاء</th><th data-i18n="th_remaining">المتبقي</th><th data-i18n="th_by">سجّله</th><th data-i18n="th_actions">تعديل</th></tr></thead>
+          <tbody id="expBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EMPLOYEE ================= -->
+<div id="empView" class="app">
+  <div class="topbar">
+    <div class="who">
+      <div class="avatar" id="empAvatar">م</div>
+      <input type="file" id="photoFile" accept="image/*" class="hidden">
+      <div>
+        <div class="name" id="empWhoName">—</div>
+        <div class="role"><span class="cloudDot off" id="cloudDot2"></span><span id="empPhotoState" data-i18n="emp_role">موظف جرد</span></div>
+      </div>
+    </div>
+    <div class="ptsChip"><svg class="ic" style="width:14px;height:14px"><use href="#i-spark"/></svg><span id="empPtsChip">0</span></div>
+    <div class="miniClock"><div class="t" id="miniTime2">--:--</div><div class="d" id="miniDate2">—</div></div>
+    <button class="btn ghost small" onclick="logout()"><svg class="ic"><use href="#i-out"/></svg><span data-i18n="logout">خروج</span></button>
+  </div>
+  <div class="panel">
+    <div class="card rise">
+      <h2><svg class="ic"><use href="#i-spark"/></svg><span data-i18n="pts_title">نقاطي</span></h2>
+      <div class="sub" data-i18n="pts_sub">10 نقاط عن كل منتج مطابق في الجرد الفيزيكل · 10 نقاط عن كل 500 ريال مبيعات باسمك.</div>
+      <div class="statRow" id="empPtsStats"></div>
+    </div>
+    <div class="card rise">
+      <h2><svg class="ic"><use href="#i-clip"/></svg><span data-i18n="my_tasks_title">مهامي</span></h2>
+      <div class="sub" data-i18n="my_tasks_sub">المهام المرسلة إليك من المشرف.</div>
+      <div id="myTasks"></div>
+    </div>
+    <div class="card hidden" id="fillCard">
+      <h2 id="fillTitle"></h2>
+      <div class="sub" id="fillSub"></div>
+      <div class="tableWrap"><table>
+        <thead id="fillHead"></thead>
+        <tbody id="fillBody"></tbody>
+      </table></div>
+      <button class="btn full" onclick="submitTask()"><svg class="ic"><use href="#i-send"/></svg><span data-i18n="submit_task_btn">إرسال النتائج للمشرف</span></button>
+    </div>
+    <div class="card rise">
+      <h2><svg class="ic"><use href="#i-trophy"/></svg><span data-i18n="top_board_title">ترتيب أفضل البائعين حتى الآن</span></h2>
+      <div class="sub" id="topMetaEmp"></div>
+      <div id="lbEmp"></div>
+    </div>
+    <div class="card rise">
+      <h2><svg class="ic"><use href="#i-cal"/></svg><span data-i18n="exp_reg_title">سجل تواريخ الانتهاء — يظهر للجميع</span></h2>
+      <div class="sub" data-i18n="exp_view_sub">للاطلاع فقط — التحديث من المشرف.</div>
+      <div class="toolRow"><input class="searchBox" id="expSearchEmp" data-i18n-ph="search" placeholder="بحث..." oninput="renderExpiryEmp()"></div>
+      <div class="tableWrap"><table>
+        <thead><tr><th data-i18n="th_product">المنتج</th><th data-i18n="th_wh">المستودع</th><th data-i18n="th_exp_date">تاريخ الانتهاء</th><th data-i18n="th_remaining">المتبقي</th></tr></thead>
+        <tbody id="expBodyEmp"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<footer class="siteFoot">© 2026 <b>Skylr</b> — All Rights Reserved · Crafted with precision</footer>
+<div class="toast" id="toast"></div>
+<script>
+/* ==========================================================
+   ⚙️ Firebase — nc-67-87b2e
+   ========================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBZimGhVL94lk5_EFl9qZuMOMGEZ1sb91w",
+  authDomain: "nc-67-87b2e.firebaseapp.com",
+  projectId: "nc-67-87b2e",
+  storageBucket: "nc-67-87b2e.firebasestorage.app",
+  messagingSenderId: "281703156178",
+  appId: "1:281703156178:web:9ef4c5eb954614010f600b"
+};
+const ADMIN_CODE = "899899";
+const REFUEL_DEFAULT_MIN = 7;
+const SEED_STAFF = [
+  "Waleed Hammed Alotaibi","Nawaf Hamdi Alharbi","Ohoud Saeed Almutairi",
+  "Abdullah Aldubyb","Rakan Almutiri","Ibrahim Aldamegh"
+];
+
+/* ---------- i18n ---------- */
+const I18N = {
+ar:{brand:'نوار <span>سينما</span>',login_title:"تسجيل الدخول",login_sub:"أدخل رمز الأدمن أو رمز الموظف المكوّن من 4 أرقام",login_btn:"دخول",login_err:"الرمز غير صحيح — تأكد وحاول مرة أخرى",admin_name:"المشرف العام",admin_role:"صلاحيات كاملة",logout:"خروج",emp_role:"موظف جرد",
+tab_inv:"الجرد اليومي",tab_refill:"التعبئة والنقل",tab_sales:"المبيعات",tab_top:"أفضل البائعين",tab_emp:"الموظفون",tab_tasks:"المهام",tab_results:"نتائج الجرد",tab_expiry:"تواريخ الانتهاء",
+fb_banner:"تعذّر الاتصال بـ Firebase — البيانات محفوظة محلياً على هذا الجهاز وستُزامَن تلقائياً عند عودة الاتصال.",
+rules_banner:"Firestore يرفض الحفظ (صلاحيات). افتح Firebase Console → Firestore Database → أنشئ القاعدة إن لم تكن موجودة → تبويب Rules واسمح بالقراءة والكتابة ثم Publish. بياناتك محفوظة محلياً وسترتفع تلقائياً بعد التصحيح.",
+cloud_on:"متصل بالسحابة — البيانات متزامنة",cloud_off:"وضع محلي — سيتم المزامنة عند توفر الاتصال",
+inv_title:"رفع تقرير الجرد (PDF)",inv_sub:"ارفع ملف Current Stock Position Report — تُقرأ المستودعات تلقائياً وتُحفظ الكميات بتاريخ اليوم مع الاحتفاظ بكل الجردات السابقة، ويُحسب الفرق عن آخر جرد.",inv_drop:"اسحب ملف الجرد هنا أو اضغط للاختيار",inv_table_title:"المخزون الحالي والفروقات",
+rf_alert_title:"منتجات تحتاج تعبئة / نقل",rf_alert_sub:"تُحدَّث تلقائياً مع كل ملف جرد: أي منتج في الريفل (الكونسيشن) أقل من 7 حبات يُعلَّم فوراً، أو أقل من السيلز سبيس الذي حددته. وتظهر الكمية المتوفرة في الستور والميني ستور للنقل منها.",rf_th_space:"السيلز سبيس",rf_th_need:"المطلوب نقله",rf_th_avail:"متوفر للنقل",rf_set_title:"تحديد السيلز سبيس لكل منتج",rf_set_sub:"اكتب سعة عرض كل منتج في المستودع — عند نزول الكمية تحته يظهر تنبيه بالنقص المطلوب. الافتراضي للريفل 7 حبات لأي منتج لم تحدده.",rf_save:"حفظ",rf_default:"افتراضي (7)",no_alerts:"كل المنتجات فوق الحد — لا يوجد نقص حالياً ✓",no_pars:"لم تحدد أي سيلز سبيس بعد — الريفل يعمل بالحد الافتراضي 7",needs_refill:"منتج يحتاج تعبئة",
+sales_title:"تقرير المبيعات — من بداية السنة",admin_only:"للمشرف فقط",sales_sub:"ارفع ملف Sales RM Consumed لعرض حجم مبيعات المنتجات من أول السنة حتى الآن.",sales_drop:"اسحب ملف المبيعات هنا أو اضغط للاختيار",sales_table_title:"حجم المبيعات حسب المنتج",
+top_up_title:"رفع تقرير مبيعات الموظفين (PDF)",top_up_sub:"ارفع ملف Daily Transaction Summary — تُجمَع المبالغ لكل موظف وتُحدَّث اللوحة للجميع، وتُحسب نقاط المبيعات (10 نقاط لكل 500 ريال). رفع نفس الفترة يستبدلها ولا يكررها.",top_drop:"اسحب ملف المعاملات هنا أو اضغط للاختيار",top_board_title:"ترتيب أفضل البائعين حتى الآن",top_reset:"تصفير اللوحة",
+emp_add_title:"إضافة موظف",emp_add_sub:"اختر اسماً من قائمة الموظفين الجاهزة (من ملفات المبيعات) أو اكتب اسماً جديداً، ثم حدد رمز دخول من 4 أرقام.",emp_name_lbl:"اسم الموظف",emp_name_ph:"اختر أو اكتب الاسم...",emp_code_lbl:"رمز الدخول (4 أرقام)",emp_add_btn:"إضافة الموظف",emp_list_title:"قائمة الموظفين",emp_list_sub:"الموظف يدخل برمزه ويظهر اسمه ونقاطه أعلى الشاشة.",
+photo_appr_title:"طلبات اعتماد الصور الشخصية",photo_appr_sub:"صور رفعها الموظفون وتنتظر موافقتك قبل ظهورها.",
+task_new_title:"إرسال مهمة لموظف",task_new_sub:"اختر الموظف والمستودع ونوع المهمة — تظهر للموظف أسماء المنتجات فقط. الجرد المطابق للنظام يمنح الموظف 10 نقاط عن كل منتج.",task_emp_lbl:"الموظف",task_loc_lbl:"المستودع",task_type_lbl:"نوع المهمة",task_type_count:"جرد فيزيكل (عدّ الكميات)",task_type_expiry:"تسجيل تواريخ انتهاء المنتجات",task_send_btn:"إرسال المهمة",task_list_title:"المهام المرسلة",task_list_sub:"حالة كل مهمة أول بأول.",
+res_title:"نتائج الجرد الفيزيكل",res_sub:"مقارنة عدّ الموظف مع كميات النظام، مع نقاط الدقة وتحميل التقرير PDF باسم الموظف.",res_pdf_btn:"تحميل PDF",res_acc:"منتج مطابق",res_pts:"نقطة دقة",
+exp_pending_title:"تسجيلات الموظفين بانتظار الاعتماد",exp_pending_sub:"مهام التواريخ التي أنهاها الموظفون — تحقق منها واعتمدها لتُنشر للجميع. التعديل والاعتماد للمشرف فقط.",exp_edit_title:"إضافة / تعديل تاريخ انتهاء (المشرف)",exp_edit_sub:"اختر المستودع والمنتج وحدد التاريخ — يظهر مباشرة للجميع.",exp_save_btn:"حفظ التاريخ",exp_reg_title:"سجل تواريخ الانتهاء — يظهر للجميع",exp_reg_sub:"الأقرب انتهاءً بالأعلى، مع تنبيه لما تبقى 30 يوماً أو أقل.",exp_view_sub:"للاطلاع فقط — التحديث من المشرف.",exp_cov:"{a} من {b} منتجاً له تاريخ",
+pts_title:"نقاطي",pts_sub:"10 نقاط عن كل منتج مطابق في الجرد الفيزيكل · 10 نقاط عن كل 500 ريال مبيعات باسمك.",pts_sales:"نقاط المبيعات",pts_acc:"نقاط دقة الجرد",pts_total:"إجمالي النقاط",pts:"نقطة",
+my_tasks_title:"مهامي",my_tasks_sub:"المهام المرسلة إليك من المشرف.",submit_task_btn:"إرسال النتائج للمشرف",
+th_product:"المنتج",th_wh:"المستودع",th_qty_now:"الكمية الحالية",th_qty_prev:"الجرد السابق",th_diff:"الفرق",th_sold_qty:"الكمية المباعة",th_pct:"نسبة من الإجمالي",th_sys_qty:"كمية النظام",th_phys_qty:"العدّ الفيزيكل",th_exp_date:"تاريخ الانتهاء",th_remaining:"المتبقي",th_by:"سجّله",th_actions:"إجراء",
+search:"بحث...",search_product:"بحث عن منتج...",all_wh:"كل المستودعات",
+week:"الأسبوع",of_year:"من سنة",wk:"أسبوع",
+new_pill:"جديد",done_pill:"مكتملة",waiting_pill:"بانتظار الموظف",sent_pill:"تم الإرسال",del:"حذف",view_cmp:"عرض المقارنة",start_fill:"بدء التعبئة",items:"صنف",code:"الرمز",
+no_inv:"ارفع أول ملف جرد لبدء التتبع",no_results_match:"لا نتائج مطابقة",no_sales:"ارفع ملف Sales RM Consumed لعرض البيانات",no_emps:"لا يوجد موظفون بعد",no_tasks:"لم تُرسل أي مهام بعد",no_res:"لا توجد نتائج مرسلة بعد",no_exp:"لا توجد تواريخ منشورة بعد",no_my_tasks:"لا توجد مهام لك حالياً — بانتظار المشرف",no_photos:"لا توجد طلبات صور حالياً",no_lb:"لم يُرفع تقرير مبيعات موظفين بعد",no_pending_exp:"لا توجد تسجيلات بانتظار الاعتماد",
+last_inv:"آخر جرد",cmp_with:"مقارنة مع جرد",no_prev:"لا يوجد جرد سابق للمقارنة",stat_items:"عدد الأصناف",stat_whs:"المستودعات",stat_value:"قيمة المخزون (شامل الضريبة)",stat_changed:"أصناف تغيّرت عن الجرد السابق",
+stat_total_units:"إجمالي الوحدات المباعة",stat_products:"عدد المنتجات",stat_top:"الأكثر مبيعاً",period:"الفترة",updated:"آخر تحديث",from_start:"بداية السنة",to_now:"الآن",
+lb_meta:"مجموع {n} تقرير · إجمالي المبيعات {amt} ريال",sar:"ريال",
+count_task:"جرد فيزيكل",expiry_task:"تواريخ انتهاء",fill_count_sub:"اكتب الكمية الفعلية الموجودة أمام كل منتج ثم أرسل. المطابقة مع النظام تمنحك 10 نقاط عن كل منتج.",fill_exp_sub:"تحقق من تاريخ انتهاء كل منتج واكتبه ثم أرسل (اترك ما لا ينطبق فارغاً).",phys_qty:"الكمية الفيزيكل",
+approve_publish:"اعتماد ونشر",reject:"رفض",approve:"قبول",submitted:"أُرسلت",dates_count:"تاريخاً مسجلاً",
+expired_since:"منتهي منذ {d} يوم",days:"يوم",
+photo_pending:"صورتك بانتظار موافقة المشرف",
+loc_stores:"الستور — المخزن",loc_mini:"الميني ستور — المستودع الصغير",loc_refuel:"الريفل — الكونسيشن",
+t_saved_inv:"تم حفظ الجرد وتحديث المخزون والتنبيهات",t_saved_sales:"تم تحديث تقرير المبيعات",t_saved_lb:"تم تحديث لوحة أفضل البائعين",t_emp_added:"تمت إضافة الموظف",t_task_sent:"تم إرسال المهمة إلى {n}",t_sent_admin:"تم إرسال النتائج للمشرف",t_fill_one:"عبّئ حقلاً واحداً على الأقل",t_name_req:"اكتب اسم الموظف",t_code4:"الرمز يجب أن يكون 4 أرقام",t_code_used:"الرمز مستخدم لموظف آخر",t_code_reserved:"هذا الرمز محجوز",t_add_emp_first:"أضف موظفين أولاً",t_upload_first:"ارفع ملف الجرد أولاً",t_photo_sent:"تم رفع الصورة — بانتظار موافقة المشرف",t_photo_ok:"تم اعتماد الصورة",t_photo_no:"تم رفض الصورة",t_exp_saved:"تم حفظ التاريخ ونشره للجميع",t_exp_pub:"تم اعتماد التواريخ ونشرها",t_pick_all:"اختر المستودع والمنتج والتاريخ",t_lb_reset:"تم تصفير اللوحة",t_par_saved:"تم حفظ السيلز سبيس",t_pts_won:"أحسنت! حصلت على {p} نقطة دقة",
+c_del_emp:"حذف هذا الموظف؟",c_del_task:"حذف المهمة؟",c_submit:"إرسال {a} من {b} صنف للمشرف؟",c_reset_lb:"تصفير لوحة أفضل البائعين وحذف كل التقارير المرفوعة؟",c_del_par:"حذف هذا الحد؟",
+inv_reading:"⏳ جاري قراءة الملف وتحليل المستودعات...",inv_err_parse:"لم أتمكن من قراءة أصناف من هذا الملف — تأكد أنه تقرير Current Stock Position.",inv_ok:"تم حفظ جرد {d} — {a} صنف في {b} مستودعات.",err:"خطأ: ",
+sales_reading:"⏳ جاري قراءة تقرير المبيعات...",sales_err:"لم أتعرف على بيانات مبيعات في الملف.",sales_ok:"تم حفظ تقرير المبيعات ({n} منتج).",
+top_reading:"⏳ جاري قراءة مبيعات الموظفين...",top_err:"لم أتعرف على بيانات موظفين في الملف.",top_ok:"تمت إضافة تقرير الفترة {p} — {n} موظفين.",
+rep_title:"تقرير الجرد الفيزيكل — نوار سينما",rep_emp:"الموظف",rep_wh:"المستودع",rep_date:"تاريخ الإرسال",rep_items:"عدد الأصناف",rep_pts:"نقاط الدقة"},
+en:{brand:'Noir <span>Cinema</span>',login_title:"Sign in",login_sub:"Enter the admin code or your 4-digit employee code",login_btn:"Sign in",login_err:"Invalid code — please try again",admin_name:"Administrator",admin_role:"Full access",logout:"Logout",emp_role:"Inventory staff",
+tab_inv:"Daily Inventory",tab_refill:"Refill & Transfer",tab_sales:"Sales",tab_top:"Top Sellers",tab_emp:"Employees",tab_tasks:"Tasks",tab_results:"Count Results",tab_expiry:"Expiry Dates",
+fb_banner:"Couldn't reach Firebase — data is saved locally on this device and will sync automatically once connected.",
+rules_banner:"Firestore is rejecting writes (permissions). Open Firebase Console → Firestore Database → create the database if missing → Rules tab, allow read/write, then Publish. Your data is safe locally and will upload automatically once fixed.",
+cloud_on:"Cloud connected — data synced",cloud_off:"Local mode — will sync when connection is available",
+inv_title:"Upload Stock Report (PDF)",inv_sub:"Upload the Current Stock Position Report — warehouses are read automatically and saved with today's date. All previous snapshots are kept and differences computed.",inv_drop:"Drag the stock file here or click to browse",inv_table_title:"Current Stock & Differences",
+rf_alert_title:"Products Needing Refill / Transfer",rf_alert_sub:"Auto-updates with every stock upload: any Refuel (concession) product under 7 units is flagged, or under the sales space you set. Available quantities in STORES and Mini Store are shown for transfer.",rf_th_space:"Sales space",rf_th_need:"Transfer needed",rf_th_avail:"Available to move",rf_set_title:"Set Sales Space per Product",rf_set_sub:"Set each product's display capacity — an alert appears when stock falls below it. Refuel defaults to 7 for products without a custom value.",rf_save:"Save",rf_default:"Default (7)",no_alerts:"All products above threshold — nothing to refill ✓",no_pars:"No sales spaces set yet — Refuel uses the default of 7",needs_refill:"products need refill",
+sales_title:"Sales Report — Year to Date",admin_only:"Admin only",sales_sub:"Upload the Sales RM Consumed file to view product sales since the start of the year.",sales_drop:"Drag the sales file here or click to browse",sales_table_title:"Sales Volume by Product",
+top_up_title:"Upload Staff Sales Report (PDF)",top_up_sub:"Upload the Daily Transaction Summary — totals per employee update the public leaderboard and sales points (10 pts per 500 SAR). Re-uploading the same period replaces it.",top_drop:"Drag the transactions file here or click to browse",top_board_title:"Top Sellers Leaderboard",top_reset:"Reset board",
+emp_add_title:"Add Employee",emp_add_sub:"Pick from the ready staff list (from sales files) or type a new name, then set a 4-digit login code.",emp_name_lbl:"Employee name",emp_name_ph:"Pick or type a name...",emp_code_lbl:"Login code (4 digits)",emp_add_btn:"Add employee",emp_list_title:"Employees",emp_list_sub:"Each employee signs in with their code and sees their name and points on top.",
+photo_appr_title:"Profile Photo Approvals",photo_appr_sub:"Photos uploaded by employees awaiting your approval.",
+task_new_title:"Assign a Task",task_new_sub:"Choose employee, warehouse and task type — the employee sees product names only. Counts matching the system earn 10 points per product.",task_emp_lbl:"Employee",task_loc_lbl:"Warehouse",task_type_lbl:"Task type",task_type_count:"Physical count",task_type_expiry:"Record product expiry dates",task_send_btn:"Send task",task_list_title:"Sent Tasks",task_list_sub:"Live status of every task.",
+res_title:"Physical Count Results",res_sub:"Employee count vs system stock, with accuracy points and a downloadable PDF named after the employee.",res_pdf_btn:"Download PDF",res_acc:"matched",res_pts:"accuracy pts",
+exp_pending_title:"Employee Submissions Pending Approval",exp_pending_sub:"Expiry tasks finished by employees — verify and approve to publish for everyone. Only the admin can edit or approve.",exp_edit_title:"Add / Edit Expiry Date (Admin)",exp_edit_sub:"Pick warehouse, product and date — published to everyone instantly.",exp_save_btn:"Save date",exp_reg_title:"Expiry Dates Registry — visible to everyone",exp_reg_sub:"Soonest first, with an alert at 30 days or less.",exp_view_sub:"View only — updated by the admin.",exp_cov:"{a} of {b} products dated",
+pts_title:"My Points",pts_sub:"10 pts per matched product in physical counts · 10 pts per 500 SAR of sales under your name.",pts_sales:"Sales points",pts_acc:"Count accuracy points",pts_total:"Total points",pts:"pts",
+my_tasks_title:"My Tasks",my_tasks_sub:"Tasks assigned to you by the admin.",submit_task_btn:"Submit to admin",
+th_product:"Product",th_wh:"Warehouse",th_qty_now:"Current Qty",th_qty_prev:"Previous",th_diff:"Diff",th_sold_qty:"Sold Qty",th_pct:"% of Total",th_sys_qty:"System Qty",th_phys_qty:"Physical Count",th_exp_date:"Expiry Date",th_remaining:"Remaining",th_by:"By",th_actions:"Action",
+search:"Search...",search_product:"Search products...",all_wh:"All warehouses",
+week:"Week",of_year:"of",wk:"Wk",
+new_pill:"New",done_pill:"Done",waiting_pill:"Awaiting employee",sent_pill:"Submitted",del:"Delete",view_cmp:"View comparison",start_fill:"Start",items:"items",code:"Code",
+no_inv:"Upload your first stock file to start tracking",no_results_match:"No matching results",no_sales:"Upload the Sales RM Consumed file to view data",no_emps:"No employees yet",no_tasks:"No tasks sent yet",no_res:"No submitted results yet",no_exp:"No dates published yet",no_my_tasks:"No tasks for you yet — waiting for the admin",no_photos:"No photo requests right now",no_lb:"No staff sales report uploaded yet",no_pending_exp:"No submissions awaiting approval",
+last_inv:"Last inventory",cmp_with:"compared with",no_prev:"no previous inventory to compare",stat_items:"Items",stat_whs:"Warehouses",stat_value:"Stock value (incl. VAT)",stat_changed:"Items changed vs previous",
+stat_total_units:"Total units sold",stat_products:"Products",stat_top:"Best seller",period:"Period",updated:"Updated",from_start:"start of year",to_now:"now",
+lb_meta:"{n} report(s) combined · total sales {amt} SAR",sar:"SAR",
+count_task:"Physical count",expiry_task:"Expiry dates",fill_count_sub:"Type the actual quantity next to each product, then submit. Matches with the system earn 10 pts each.",fill_exp_sub:"Verify and enter each product's expiry date, leave blank if not applicable.",phys_qty:"Physical qty",
+approve_publish:"Approve & publish",reject:"Reject",approve:"Approve",submitted:"Submitted",dates_count:"dates recorded",
+expired_since:"Expired {d} days ago",days:"days",
+photo_pending:"Your photo awaits admin approval",
+loc_stores:"STORES — Main warehouse",loc_mini:"Mini Store — Small storage",loc_refuel:"Refuel — Concession",
+t_saved_inv:"Inventory saved, stock & alerts updated",t_saved_sales:"Sales report updated",t_saved_lb:"Leaderboard updated",t_emp_added:"Employee added",t_task_sent:"Task sent to {n}",t_sent_admin:"Results sent to admin",t_fill_one:"Fill at least one field",t_name_req:"Enter the employee name",t_code4:"Code must be 4 digits",t_code_used:"Code already in use",t_code_reserved:"This code is reserved",t_add_emp_first:"Add employees first",t_upload_first:"Upload a stock file first",t_photo_sent:"Photo uploaded — awaiting admin approval",t_photo_ok:"Photo approved",t_photo_no:"Photo rejected",t_exp_saved:"Date saved and published",t_exp_pub:"Dates approved and published",t_pick_all:"Pick warehouse, product and date",t_lb_reset:"Leaderboard reset",t_par_saved:"Sales space saved",t_pts_won:"Well done! You earned {p} accuracy points",
+c_del_emp:"Delete this employee?",c_del_task:"Delete this task?",c_submit:"Submit {a} of {b} items to the admin?",c_reset_lb:"Reset the leaderboard and delete all uploaded reports?",c_del_par:"Remove this threshold?",
+inv_reading:"⏳ Reading file and analyzing warehouses...",inv_err_parse:"Couldn't read items — make sure it's a Current Stock Position report.",inv_ok:"Saved inventory {d} — {a} items in {b} warehouses.",err:"Error: ",
+sales_reading:"⏳ Reading sales report...",sales_err:"Couldn't detect sales data in this file.",sales_ok:"Sales report saved ({n} products).",
+top_reading:"⏳ Reading staff sales...",top_err:"Couldn't detect employee data in this file.",top_ok:"Added period {p} — {n} employees.",
+rep_title:"Physical Count Report — Noir Cinema",rep_emp:"Employee",rep_wh:"Warehouse",rep_date:"Submitted",rep_items:"Items",rep_pts:"Accuracy points"}
+};
+let LANG = "ar";
+try{ LANG = localStorage.getItem("noir_lang") || "ar"; }catch(e){}
+function t(k, vars){ let s = (I18N[LANG][k] ?? I18N.ar[k] ?? k); if(vars) for(const [a,b] of Object.entries(vars)) s = s.replace("{"+a+"}", b); return s; }
+
+/* ---------- tools ---------- */
+const $ = id => document.getElementById(id);
+function toast(msg){ const el=$("toast"); if(!el) return; el.textContent=msg; el.style.display="block"; clearTimeout(el._h); el._h=setTimeout(()=>el.style.display="none",3400); }
+function todayKey(d=new Date()){ return d.toISOString().slice(0,10); }
+function fmt(n){ return Number(n).toLocaleString("en-US",{maximumFractionDigits:2}); }
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function docId(s){ return String(s).replace(/[\/#?%\[\]\.]/g,"_"); }
+function ico(n){ return `<svg class="ic"><use href="#i-${n}"/></svg>`; }
+function emptyState(key, icon){ return `<div class="empty"><svg class="ic"><use href="#i-${icon||"box"}"/></svg><div>${t(key)}</div></div>`; }
+
+/* ---------- storage: local-first + cloud sync ---------- */
+let fs = null, cloudLive = false;
+try{
+  if (typeof firebase !== "undefined" && firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("PASTE")){
+    firebase.initializeApp(firebaseConfig);
+    fs = firebase.firestore();
+    try{ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
+  }
+}catch(e){ fs = null; }
+const LS = {
+  read(col){ try{ return JSON.parse(localStorage.getItem("noir_"+col)||"{}"); }catch(e){ return {}; } },
+  write(col,k){ try{ localStorage.setItem("noir_"+col, JSON.stringify(k)); }catch(e){} }
+};
+function setCloud(ok, e){
+  cloudLive = ok;
+  ["cloudDot","cloudDot2"].forEach(id=>{
+    const n = $(id); if(!n) return;
+    n.className = "cloudDot " + (ok?"on":"off");
+    n.title = ok ? t("cloud_on") : t("cloud_off");
+  });
+  if (!ok && e && /permission|insufficient|denied/i.test(e.message||"")) $("rulesBanner")?.classList.remove("hidden");
+  else if (ok){ $("rulesBanner")?.classList.add("hidden"); $("fbBanner")?.classList.add("hidden"); }
+}
+const DB = {
+  async set(col, id, data){
+    const k = LS.read(col); k[id] = data; LS.write(col, k);
+    if (fs){ try{ await fs.collection(col).doc(id).set(data); setCloud(true); }catch(e){ setCloud(false, e); } }
+  },
+  async get(col, id){
+    if (fs){
+      try{
+        const d = await fs.collection(col).doc(id).get(); setCloud(true);
+        if (d.exists){ const v = d.data(); const k = LS.read(col); k[id]=v; LS.write(col,k); return v; }
+      }catch(e){ setCloud(false, e); }
+    }
+    const k = LS.read(col); return (id in k) ? k[id] : null;
+  },
+  async list(col){
+    const local = LS.read(col);
+    if (fs){
+      try{
+        const s = await fs.collection(col).get(); setCloud(true);
+        const merged = {};
+        s.docs.forEach(d=>merged[d.id]=d.data());
+        /* أي بيانات محلية غير موجودة سحابياً تُرفع تلقائياً — الذاكرة لا تُمسح */
+        for (const [id,v] of Object.entries(local)){
+          if (!(id in merged)){ merged[id]=v; fs.collection(col).doc(id).set(v).catch(()=>{}); }
+        }
+        LS.write(col, merged);
+        return Object.entries(merged).map(([id,v])=>({id,...v}));
+      }catch(e){ setCloud(false, e); }
+    }
+    return Object.entries(local).map(([id,v])=>({id,...v}));
+  },
+  async del(col, id){
+    const k = LS.read(col); delete k[id]; LS.write(col, k);
+    if (fs){ try{ await fs.collection(col).doc(id).delete(); }catch(e){ setCloud(false, e); } }
+  }
+};
+
+/* ---------- clock ---------- */
+function isoWeek(d){
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(x.getUTCFullYear(),0,1));
+  return Math.ceil((((x - y0) / 86400000) + 1) / 7);
+}
+const AR_DAYS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const AR_MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+function tickClock(){
+  const n = new Date();
+  const time = n.toLocaleTimeString("en-GB");
+  const date = LANG==="ar"
+    ? `${AR_DAYS[n.getDay()]} ${n.getDate()} ${AR_MONTHS[n.getMonth()]} ${n.getFullYear()}م`
+    : n.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const wk = `${t("week")} ${isoWeek(n)} ${t("of_year")} ${n.getFullYear()}`;
+  if($("bigTime")){ $("bigTime").textContent=time; $("bigDate").textContent=date; $("bigWeek").textContent=wk; }
+  for(const [a,b] of [["miniTime","miniDate"],["miniTime2","miniDate2"]]){
+    if($(a)){ $(a).textContent=time.slice(0,5); const bd=$(b); if(bd) bd.textContent=`${date} · ${t("wk")} ${isoWeek(n)}`; }
+  }
+}
+setInterval(tickClock, 1000);
+
+/* ---------- warehouses: order & labels ---------- */
+function locRank(l){
+  const s = String(l).toLowerCase();
+  if (/^stores?$/.test(s) || s.includes("store") && !s.includes("mini")) return 0;
+  if (s.includes("mini")) return 1;
+  if (s.includes("refuel") || s.includes("refill")) return 2;
+  return 3;
+}
+function sortLocs(arr){ return [...arr].sort((a,b)=>locRank(a)-locRank(b)); }
+function locLabel(l){
+  const s = String(l).toLowerCase();
+  if (s.includes("mini")) return t("loc_mini");
+  if (s.includes("refuel") || s.includes("refill")) return t("loc_refuel");
+  if (s.includes("store")) return t("loc_stores");
+  return l;
+}
+function isRefuel(l){ const s=String(l).toLowerCase(); return s.includes("refuel")||s.includes("refill"); }
+
+/* ---------- i18n apply ---------- */
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
+  if ($("langLbl")) $("langLbl").textContent = LANG === "ar" ? "EN" : "عربي";
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.dataset.i18n;
+    if (k === "brand") el.innerHTML = t(k); else el.textContent = t(k);
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>el.placeholder = t(el.dataset.i18nPh));
+  tickClock();
+  rebuildSelects();
+  rerenderAll();
+}
+function toggleLang(){ LANG = LANG === "ar" ? "en" : "ar"; try{localStorage.setItem("noir_lang", LANG);}catch(e){} applyLang(); }
+function rerenderAll(){
+  try{
+    if (session?.role === "admin"){ renderInv(); renderAlerts(); renderPars(); renderSales(); renderLeaderboard(); renderEmpList(); renderPhotoApprovals(); renderTaskList(); renderResultsList(); renderExpiry(); renderExpPending(); }
+    if (session?.role === "emp"){ renderMyTasks(); renderLeaderboard(); renderExpiryEmp(); renderEmpPoints(); }
+  }catch(e){ console.warn(e); }
+}
+function rebuildSelects(){
+  if (!session) return;
+  if (session.role === "admin"){ fillWarehouseFilter(); fillTaskSelectors(); fillExpirySelectors(); fillParSelectors(); }
+}
+
+/* ---------- session ---------- */
+let session = null;
+async function doLogin(){
+  const pin = $("pinInput").value.trim();
+  $("loginErr").textContent = "";
+  try{
+    if (pin === ADMIN_CODE){ session = {role:"admin"}; await enterAdmin(); return; }
+    if (/^\d{4}$/.test(pin)){
+      const emp = await DB.get("employees", pin);
+      if (emp){ session = {role:"emp", code:pin, name:emp.name}; await enterEmp(); return; }
+    }
+    $("loginErr").textContent = t("login_err");
+  }catch(e){ $("loginErr").textContent = t("err") + e.message; }
+}
+$("pinInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+function logout(){ location.reload(); }
+async function enterAdmin(){
+  $("loginView").style.display = "none";
+  $("adminView").style.display = "block";
+  if (!fs) $("fbBanner").classList.remove("hidden");
+  await seedStaff();
+  await Promise.all([loadInventory(), loadSales(), loadLeaderboard(), loadEmployees(), loadTasks(), loadResults(), loadExpiry(), loadExpPending(), loadPars()]);
+}
+async function enterEmp(){
+  $("loginView").style.display = "none";
+  $("empView").style.display = "block";
+  $("empWhoName").textContent = session.name;
+  refreshEmpAvatar();
+  await Promise.all([loadMyTasks(), loadLeaderboard(), loadExpiry()]);
+  renderEmpPoints();
+}
+function showTab(btn){
+  document.querySelectorAll("#adminTabs .tab").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");
+  ["pInv","pRefill","pSales","pTop","pEmp","pTasks","pResults","pExpiry"].forEach(p=>$(p).classList.add("hidden"));
+  const pane = $(btn.dataset.p);
+  pane.classList.remove("hidden");
+  pane.querySelectorAll(".card").forEach((c,i)=>{ c.classList.remove("rise"); void c.offsetWidth; c.style.animationDelay=(i*60)+"ms"; c.classList.add("rise"); });
+}
+
+/* ==========================================================
+   قارئ PDF — النسخة المختبرة، بدون أي تعديل
+   ========================================================== */
+if (typeof pdfjsLib !== "undefined")
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+async function pdfToLines(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  const lines = [];
+  for (let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const rows = {};
+    for (const it of tc.items){
+      if (!it.str.trim()) continue;
+      const y = Math.round(it.transform[5]);
+      let key = Object.keys(rows).find(k => Math.abs(k - y) <= 2);
+      if (key === undefined) key = y;
+      (rows[key] = rows[key] || []).push({x: it.transform[4], s: it.str});
+    }
+    Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const line = rows[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(" ").replace(/\s+/g," ").trim();
+      if (line) lines.push(line);
+    });
+  }
+  return lines;
+}
+const NUM = "-?[\\d,]+\\.\\d+";
+const ITEM_RE = new RegExp(`^(.*?)\\s+(${NUM})\\s+(${NUM})\\s+(${NUM})\\s+(${NUM})$`);
+function toNum(s){ return parseFloat(String(s).replace(/,/g,"")); }
+function cleanName(n){
+  n = n.trim();
+  const half = Math.floor(n.length/2);
+  const a = n.slice(0,half).trim(), b = n.slice(half).trim();
+  if (a && a === b) n = a;
+  else {
+    const parts = n.split(" ");
+    for(let i=1;i<parts.length;i++){
+      const l = parts.slice(0,i).join(" "), r = parts.slice(i).join(" ");
+      if (l === r){ n = l; break; }
+    }
+  }
+  return n.replace(/^[A-Z]\d{6,}\s+/,"").trim();
+}
+function parseStockLines(lines){
+  const standalone = new Set(lines.filter(l=>!ITEM_RE.test(l)).map(l=>l.trim()));
+  const locs = [];
+  for (const l of lines){
+    const m = l.match(ITEM_RE);
+    if (m && /[A-Za-z\u0600-\u06FF]/.test(m[1]) && standalone.has(m[1].trim()) && cleanName(m[1]) === m[1].trim()){
+      if (!locs.includes(m[1].trim())) locs.push(m[1].trim());
+    }
+  }
+  const items = []; let cur = null;
+  for (const l of lines){
+    const x = l.trim();
+    if (locs.includes(x)){ cur = x; continue; }
+    if (/^Grand Total/i.test(x)) { cur = null; continue; }
+    const m = x.match(ITEM_RE);
+    if (!m || !cur) continue;
+    const rawName = m[1].trim();
+    if (!/[A-Za-z\u0600-\u06FF&]/.test(rawName)) continue;
+    if (locs.includes(rawName)) continue;
+    const name = cleanName(rawName);
+    if (!name || /^Page /i.test(name) || /Report$/i.test(name)) continue;
+    items.push({loc: cur, name, qty: toNum(m[2]), gross: toNum(m[5])});
+  }
+  const map = {};
+  for (const it of items){
+    const k = it.loc + "|" + it.name;
+    if (map[k]) { map[k].qty += it.qty; map[k].gross += it.gross; }
+    else map[k] = {...it};
+  }
+  return {locations: locs, items: Object.values(map)};
+}
+function parseSalesLines(lines){
+  const re = new RegExp(`^(.*?)\\s+(${NUM})\\s+(${NUM})$`);
+  const rows = []; let from = "", to = "";
+  for (const l of lines){
+    const x = l.trim();
+    const mf = x.match(/From:\s*([\d/]+)/i); if (mf) from = mf[1];
+    const mt = x.match(/To:\s*([\d/]+)/i); if (mt) to = mt[1];
+    if (/^Grand Total/i.test(x)) continue;
+    const m = x.match(re);
+    if (!m) continue;
+    const name = m[1].trim();
+    if (!/[A-Za-z\u0600-\u06FF&]/.test(name)) continue;
+    if (/User Name|Sale Unpunched|Page \d|Report|As On/i.test(name)) continue;
+    rows.push({name: cleanName(name), qty: toNum(m[2])});
+  }
+  return {from, to, rows};
+}
+function parseSellersLines(lines){
+  let from="", to="";
+  const ids = {}; const totals = {};
+  const headRe = /^(\d{3,6})\s+([A-Za-z][A-Za-z .'\-]+)$/;
+  for (const l of lines){
+    const x = l.trim();
+    const mf = x.match(/From:\s*([\d/]+)/); if (mf && !from) from = mf[1];
+    const mt = x.match(/^To:\s*([\d/]+)/); if (mt && !to) to = mt[1];
+    if (/^User:/i.test(x)) continue;
+    const h = x.match(headRe);
+    if (h){ ids[h[2].replace(/\s+/g," ").trim()] = h[1]; continue; }
+    const m = x.match(/^(.+?)\s+([\d,]+\.\d{2})$/);
+    if (m){
+      const name = m[1].replace(/\s+/g," ").trim();
+      if (ids[name] !== undefined) totals[name] = (totals[name]||0) + toNum(m[2]);
+    }
+  }
+  return {from, to, sellers: Object.entries(totals).map(([name,amount])=>({name, empId: ids[name]||"", amount}))};
+}
+
+/* ---------- inventory ---------- */
+let latestSnap = null, prevSnap = null;
+$("invFile").addEventListener("change", e=>{ if(e.target.files[0]) handleInvUpload(e.target.files[0]); e.target.value=""; });
+const dz = $("invDrop");
+["dragover","dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{
+  e.preventDefault();
+  dz.classList.toggle("over", ev==="dragover");
+  if (ev==="drop" && e.dataTransfer.files[0]) handleInvUpload(e.dataTransfer.files[0]);
+}));
+async function handleInvUpload(file){
+  try{
+    $("invStatus").textContent = t("inv_reading");
+    const parsed = parseStockLines(await pdfToLines(file));
+    if (!parsed.items.length) { $("invStatus").textContent = "❌ " + t("inv_err_parse"); return; }
+    const key = todayKey();
+    await DB.set("inv_snapshots", key, {date:key, ts:Date.now(), locations:parsed.locations, items:parsed.items});
+    $("invStatus").textContent = "✅ " + t("inv_ok",{d:key,a:parsed.items.length,b:parsed.locations.length});
+    toast(t("t_saved_inv"));
+    await loadInventory();
+  }catch(err){ console.error(err); $("invStatus").textContent = "❌ " + t("err") + err.message; }
+}
+async function loadInventory(){
+  const snaps = (await DB.list("inv_snapshots")).sort((a,b)=>a.date<b.date?1:-1);
+  latestSnap = snaps[0]||null; prevSnap = snaps[1]||null;
+  rebuildSelects();
+  renderInv(); renderAlerts();
+}
+function fillWarehouseFilter(){
+  const sel = $("invLocFilter"); if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${t("all_wh")}</option>`;
+  if (latestSnap) sortLocs(latestSnap.locations).forEach(l=>sel.innerHTML+=`<option value="${esc(l)}">${esc(locLabel(l))}</option>`);
+  sel.value = cur;
+}
+function renderInv(){
+  const body = $("invTable")?.querySelector("tbody"); if(!body) return;
+  const stats = $("invStats");
+  if (!latestSnap){ body.innerHTML=`<tr><td colspan="5">${emptyState("no_inv","box")}</td></tr>`; stats.innerHTML=""; $("invMeta").textContent=""; return; }
+  $("invMeta").textContent = `${t("last_inv")}: ${latestSnap.date}` + (prevSnap ? ` · ${t("cmp_with")} ${prevSnap.date}` : ` · ${t("no_prev")}`);
+  const prevMap = {};
+  if (prevSnap) prevSnap.items.forEach(i=>prevMap[i.loc+"|"+i.name]=i.qty);
+  const q = ($("invSearch").value||"").toLowerCase();
+  const lf = $("invLocFilter").value;
+  const rows = latestSnap.items
+    .filter(i => (!lf || i.loc===lf) && (!q || i.name.toLowerCase().includes(q)))
+    .sort((a,b)=> locRank(a.loc)-locRank(b.loc) || a.name.localeCompare(b.name));
+  body.innerHTML = rows.map(i=>{
+    const pv = prevMap[i.loc+"|"+i.name];
+    const diff = pv===undefined ? null : +(i.qty-pv).toFixed(2);
+    const dTxt = diff===null ? `<span class="pill">${t("new_pill")}</span>`
+      : diff===0 ? '<span class="zero num">0</span>'
+      : `<span class="num ${diff>0?"pos":"neg"}">${diff>0?"+":""}${fmt(diff)}</span>`;
+    return `<tr><td>${esc(i.name)}</td><td><span class="pill">${esc(locLabel(i.loc))}</span></td>
+      <td class="num">${fmt(i.qty)}</td><td class="num">${pv===undefined?"—":fmt(pv)}</td><td>${dTxt}</td></tr>`;
+  }).join("") || `<tr><td colspan="5">${emptyState("no_results_match","search")}</td></tr>`;
+  let grossAll=0, changedAll=0;
+  latestSnap.items.forEach(i=>{
+    grossAll += i.gross||0;
+    const pv = prevMap[i.loc+"|"+i.name];
+    if (pv!==undefined && +(i.qty-pv).toFixed(2)!==0) changedAll++;
+  });
+  const alerts = computeAlerts();
+  stats.innerHTML = `
+    <div class="stat"><div class="v">${fmt(latestSnap.items.length)}</div><div class="l">${t("stat_items")}</div></div>
+    <div class="stat"><div class="v">${latestSnap.locations.length}</div><div class="l">${t("stat_whs")}</div></div>
+    <div class="stat"><div class="v">${fmt(grossAll)}</div><div class="l">${t("stat_value")}</div></div>
+    <div class="stat"><div class="v">${prevSnap?changedAll:"—"}</div><div class="l">${t("stat_changed")}</div></div>
+    <div class="stat"><div class="v" style="color:${alerts.length? "var(--amber)":"var(--green)"}">${alerts.length}</div><div class="l">${t("needs_refill")}</div></div>`;
+}
+
+/* ---------- refill & transfer ---------- */
+let parLevels = [];
+async function loadPars(){ parLevels = await DB.list("par_levels"); renderPars(); renderAlerts(); }
+function fillParSelectors(){
+  const ls = $("parLoc"); if(!ls) return;
+  const cur = ls.value;
+  ls.innerHTML = latestSnap ? sortLocs(latestSnap.locations).map(l=>`<option value="${esc(l)}">${esc(locLabel(l))}</option>`).join("") : `<option value="">—</option>`;
+  if (cur) ls.value = cur;
+  fillParProducts();
+}
+function fillParProducts(){
+  const ps = $("parProduct"); if(!ps) return;
+  const loc = $("parLoc").value;
+  ps.innerHTML = (latestSnap && loc)
+    ? latestSnap.items.filter(i=>i.loc===loc).sort((a,b)=>a.name.localeCompare(b.name)).map(i=>`<option>${esc(i.name)}</option>`).join("")
+    : `<option value="">—</option>`;
+}
+async function savePar(){
+  const loc = $("parLoc").value, name = $("parProduct").value, v = parseInt($("parVal").value,10);
+  if (!loc || !name || !v || v<1) return toast(t("t_pick_all"));
+  await DB.set("par_levels", docId(loc+"__"+name), {loc, name, min:v, updatedAt:Date.now()});
+  $("parVal").value="";
+  toast(t("t_par_saved"));
+  loadPars();
+}
+async function delPar(id){
+  if (!confirm(t("c_del_par"))) return;
+  await DB.del("par_levels", id);
+  loadPars();
+}
+function renderPars(){
+  const body = $("parBody"); if(!body) return;
+  body.innerHTML = parLevels.length ? parLevels
+    .sort((a,b)=>locRank(a.loc)-locRank(b.loc)||a.name.localeCompare(b.name))
+    .map(p=>`<tr><td>${esc(p.name)}</td><td><span class="pill">${esc(locLabel(p.loc))}</span></td>
+      <td class="num">${p.min}</td>
+      <td><button class="btn danger small" onclick="delPar('${p.id}')">${ico("x")}${t("del")}</button></td></tr>`).join("")
+    : `<tr><td colspan="4">${emptyState("no_pars","swap")}</td></tr>`;
+}
+function computeAlerts(){
+  if (!latestSnap) return [];
+  const parMap = {};
+  parLevels.forEach(p=>parMap[p.loc+"|"+p.name]=p.min);
+  const byName = {};
+  latestSnap.items.forEach(i=>{ (byName[i.name]=byName[i.name]||{})[i.loc]=i.qty; });
+  const alerts = [];
+  for (const i of latestSnap.items){
+    let min = parMap[i.loc+"|"+i.name];
+    if (min===undefined && isRefuel(i.loc)) min = REFUEL_DEFAULT_MIN;
+    if (min===undefined) continue;
+    if (i.qty < min){
+      const others = Object.entries(byName[i.name]||{})
+        .filter(([l])=>l!==i.loc && (byName[i.name][l]||0)>0)
+        .sort((a,b)=>locRank(a[0])-locRank(b[0]))
+        .map(([l,q])=>`${locLabel(l)}: ${fmt(q)}`).join(" · ");
+      alerts.push({name:i.name, loc:i.loc, qty:i.qty, min, need:+(min-i.qty).toFixed(2), avail:others||"—", isDefault: parMap[i.loc+"|"+i.name]===undefined});
+    }
+  }
+  return alerts.sort((a,b)=>b.need-a.need);
+}
+function renderAlerts(){
+  const body = $("alertBody"); if(!body) return;
+  const alerts = computeAlerts();
+  const badge = $("alertBadge");
+  if (badge){ badge.textContent = alerts.length; badge.classList.toggle("hidden", !alerts.length); }
+  body.innerHTML = alerts.length ? alerts.map(a=>`
+    <tr><td>${esc(a.name)}</td><td><span class="pill ${isRefuel(a.loc)?"r":"a"}">${esc(locLabel(a.loc))}</span></td>
+    <td class="num neg">${fmt(a.qty)}</td>
+    <td class="num">${a.min}${a.isDefault?` <span class="pill a" style="font-size:10px">${t("rf_default")}</span>`:""}</td>
+    <td><span class="num" style="color:var(--amber);font-weight:700">+${fmt(a.need)}</span></td>
+    <td style="font-size:12px;color:var(--muted)">${esc(a.avail)}</td></tr>`).join("")
+    : `<tr><td colspan="6">${emptyState("no_alerts","check")}</td></tr>`;
+}
+
+/* ---------- sales (products) ---------- */
+let salesData = null;
+$("salesFile").addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return; e.target.value="";
+  try{
+    $("salesStatus").textContent = t("sales_reading");
+    const parsed = parseSalesLines(await pdfToLines(f));
+    if (!parsed.rows.length){ $("salesStatus").textContent = "❌ " + t("sales_err"); return; }
+    await DB.set("sales_reports","latest",{...parsed, ts:Date.now(), savedOn: todayKey()});
+    $("salesStatus").textContent = "✅ " + t("sales_ok",{n:parsed.rows.length});
+    toast(t("t_saved_sales"));
+    await loadSales();
+  }catch(err){ $("salesStatus").textContent = "❌ " + t("err") + err.message; }
+});
+async function loadSales(){ salesData = await DB.get("sales_reports","latest"); renderSales(); }
+function renderSales(){
+  const body = $("salesTable")?.querySelector("tbody"); if(!body) return;
+  const stats=$("salesStats");
+  if (!salesData){ body.innerHTML=`<tr><td colspan="4">${emptyState("no_sales","chart")}</td></tr>`; stats.innerHTML=""; $("salesMeta").textContent=""; return; }
+  $("salesMeta").textContent = `${t("period")}: ${salesData.from||t("from_start")} → ${salesData.to||t("to_now")} · ${t("updated")}: ${salesData.savedOn}`;
+  const q = ($("salesSearch").value||"").toLowerCase();
+  const total = salesData.rows.reduce((s,r)=>s+r.qty,0);
+  const rows = salesData.rows.filter(r=>!q||r.name.toLowerCase().includes(q)).sort((a,b)=>b.qty-a.qty);
+  body.innerHTML = rows.map((r,i)=>`<tr><td class="num">${i+1}</td><td>${esc(r.name)}</td>
+    <td class="num">${fmt(r.qty)}</td><td class="num">${total?((r.qty/total*100).toFixed(1)+"%"):"—"}</td></tr>`).join("")
+    || `<tr><td colspan="4">${emptyState("no_results_match","search")}</td></tr>`;
+  const top = [...salesData.rows].sort((a,b)=>b.qty-a.qty)[0];
+  stats.innerHTML = `
+    <div class="stat"><div class="v">${fmt(total)}</div><div class="l">${t("stat_total_units")}</div></div>
+    <div class="stat"><div class="v">${salesData.rows.length}</div><div class="l">${t("stat_products")}</div></div>
+    <div class="stat"><div class="v" style="font-size:14px">${top?esc(top.name):"—"}</div><div class="l">${t("stat_top")} (${top?fmt(top.qty):0})</div></div>`;
+}
+
+/* ---------- leaderboard & points ---------- */
+let sellerReports = [], employees = [], allTasks = [];
+$("topFile").addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return; e.target.value="";
+  try{
+    $("topStatus").textContent = t("top_reading");
+    const parsed = parseSellersLines(await pdfToLines(f));
+    if (!parsed.sellers.length){ $("topStatus").textContent = "❌ " + t("top_err"); return; }
+    const period = `${parsed.from||"x"}_${parsed.to||"x"}`;
+    await DB.set("seller_reports", docId(period), {...parsed, ts:Date.now()});
+    for (const s of parsed.sellers) await ensureStaff(s.name);
+    $("topStatus").textContent = "✅ " + t("top_ok",{p:`${parsed.from} → ${parsed.to}`, n:parsed.sellers.length});
+    toast(t("t_saved_lb"));
+    await loadLeaderboard(); await loadStaffList();
+  }catch(err){ $("topStatus").textContent = "❌ " + t("err") + err.message; }
+});
+async function loadLeaderboard(){ sellerReports = await DB.list("seller_reports"); renderLeaderboard(); renderEmpPoints(); }
+function salesByName(){
+  const agg = {};
+  sellerReports.forEach(r=>(r.sellers||[]).forEach(s=>{ agg[s.name]=(agg[s.name]||0)+s.amount; }));
+  return agg;
+}
+function accPtsByCode(){
+  const pts = {};
+  allTasks.filter(x=>x.status==="done" && x.type==="count").forEach(x=>{ pts[x.empCode]=(pts[x.empCode]||0)+(x.points||0); });
+  return pts;
+}
+function pointsFor(name, code){
+  const sales = salesByName()[name]||0;
+  const salesPts = Math.floor(sales/500)*10;
+  const accPts = code ? (accPtsByCode()[code]||0) : (employees.find(e=>e.name===name) ? (accPtsByCode()[employees.find(e=>e.name===name).id]||0) : 0);
+  return {sales, salesPts, accPts, total: salesPts+accPts};
+}
+function renderLeaderboard(){
+  const agg = salesByName();
+  const list = Object.entries(agg).map(([name,amount])=>({name,amount})).sort((a,b)=>b.amount-a.amount);
+  const total = list.reduce((s,x)=>s+x.amount,0);
+  const max = list[0]?.amount || 1;
+  const photos = {}; employees.forEach(e=>{ if(e.photo) photos[e.name]=e.photo; });
+  const html = list.length ? list.map((s,i)=>{
+    const medal = i<3 ? ["🥇","🥈","🥉"][i] : (i+1);
+    const av = photos[s.name] ? `<img src="${photos[s.name]}" alt="">` : esc(s.name.trim()[0]||"?");
+    const p = pointsFor(s.name);
+    return `<div class="lbRow r${i+1}" style="animation-delay:${i*70}ms">
+      <div class="bar" style="width:${(s.amount/max*100).toFixed(1)}%"></div>
+      <div class="lbRank">${medal}</div>
+      <div class="lbAvatar">${av}</div>
+      <div class="lbBody"><div class="lbName">${esc(s.name)}</div><div class="lbPts">✦ ${fmt(p.total)} ${t("pts")}</div></div>
+      <div class="lbAmt">${fmt(s.amount)} <small>${t("sar")}</small></div>
+    </div>`;
+  }).join("") : emptyState("no_lb","trophy");
+  if ($("lbAdmin")) $("lbAdmin").innerHTML = html;
+  if ($("lbEmp")) $("lbEmp").innerHTML = html;
+  const meta = list.length ? t("lb_meta",{n:sellerReports.length, amt:fmt(total)}) : "";
+  if ($("topMeta")) $("topMeta").textContent = meta;
+  if ($("topMetaEmp")) $("topMetaEmp").textContent = meta;
+}
+async function resetLeaderboard(){
+  if (!confirm(t("c_reset_lb"))) return;
+  for (const r of sellerReports) await DB.del("seller_reports", r.id);
+  toast(t("t_lb_reset"));
+  loadLeaderboard();
+}
+function renderEmpPoints(){
+  if (session?.role !== "emp") return;
+  const p = pointsFor(session.name, session.code);
+  if ($("empPtsChip")) $("empPtsChip").textContent = fmt(p.total);
+  const el = $("empPtsStats"); if(!el) return;
+  el.innerHTML = `
+    <div class="stat"><div class="v" style="color:var(--gold)">${fmt(p.total)}</div><div class="l">${t("pts_total")}</div></div>
+    <div class="stat"><div class="v">${fmt(p.salesPts)}</div><div class="l">${t("pts_sales")} (${fmt(p.sales)} ${t("sar")})</div></div>
+    <div class="stat"><div class="v">${fmt(p.accPts)}</div><div class="l">${t("pts_acc")}</div></div>`;
+}
+
+/* ---------- employees + staff directory ---------- */
+let staffNames = [];
+async function ensureStaff(name){
+  name = String(name).replace(/\s+/g," ").trim();
+  if (!name) return;
+  const id = docId(name);
+  if (!(await DB.get("staff_directory", id))) await DB.set("staff_directory", id, {name});
+}
+async function seedStaff(){ for (const n of SEED_STAFF) await ensureStaff(n); await loadStaffList(); }
+async function loadStaffList(){
+  staffNames = (await DB.list("staff_directory")).map(s=>s.name).sort();
+  const dl = $("staffList");
+  if (dl) dl.innerHTML = staffNames.map(n=>`<option value="${esc(n)}">`).join("");
+}
+async function loadEmployees(){
+  employees = await DB.list("employees");
+  renderEmpList(); renderPhotoApprovals(); fillTaskSelectors();
+}
+function renderEmpList(){
+  const el = $("empList"); if(!el) return;
+  el.innerHTML = employees.length ? employees.map(e=>{
+    const p = pointsFor(e.name, e.id);
+    return `<div class="taskItem">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <div class="lbAvatar" style="width:36px;height:36px">${e.photo?`<img src="${e.photo}" alt="">`:esc(e.name.trim()[0])}</div>
+        <div style="min-width:0"><b>${esc(e.name)}</b>
+          <div style="font-size:12px;color:var(--muted)">${t("code")}: <span class="num">${e.id}</span> · <span style="color:var(--gold)">✦ ${fmt(p.total)} ${t("pts")}</span></div>
+        </div>
+      </div>
+      <button class="btn danger small" onclick="delEmployee('${e.id}')">${ico("x")}${t("del")}</button>
+    </div>`;
+  }).join("") : emptyState("no_emps","users");
+}
+async function addEmployee(){
+  try{
+    const name = $("empName").value.replace(/\s+/g," ").trim(), code = $("empCode").value.trim();
+    if (!name) return toast(t("t_name_req"));
+    if (!/^\d{4}$/.test(code)) return toast(t("t_code4"));
+    if (ADMIN_CODE.startsWith(code)) return toast(t("t_code_reserved"));
+    if (await DB.get("employees", code)) return toast(t("t_code_used"));
+    await DB.set("employees", code, {name, createdAt: Date.now()});
+    await ensureStaff(name);
+    $("empName").value=""; $("empCode").value="";
+    toast("✅ " + t("t_emp_added"));
+    await loadEmployees(); await loadStaffList(); renderLeaderboard();
+  }catch(e){ toast("❌ " + t("err") + e.message); }
+}
+async function delEmployee(code){
+  if (!confirm(t("c_del_emp"))) return;
+  await DB.del("employees", code);
+  loadEmployees();
+}
+
+/* ---------- profile photos ---------- */
+$("photoFile").addEventListener("change", e=>{
+  const f = e.target.files[0]; if(!f) return; e.target.value="";
+  const img = new Image();
+  img.onload = async ()=>{
+    try{
+      const c = document.createElement("canvas");
+      const size = 160; c.width = size; c.height = size;
+      const s = Math.min(img.width, img.height);
+      c.getContext("2d").drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, size, size);
+      const data = c.toDataURL("image/jpeg", .8);
+      const emp = await DB.get("employees", session.code);
+      await DB.set("employees", session.code, {...emp, pendingPhoto: data, pendingAt: Date.now()});
+      toast(t("t_photo_sent"));
+      refreshEmpAvatar();
+    }catch(err){ toast("❌ " + t("err") + err.message); }
+  };
+  img.src = URL.createObjectURL(f);
+});
+async function refreshEmpAvatar(){
+  const emp = await DB.get("employees", session.code);
+  const av = $("empAvatar");
+  const btn = `<button class="photoBtn" onclick="document.getElementById('photoFile').click()">${ico("cam")}</button>`;
+  av.innerHTML = (emp?.photo ? `<img src="${emp.photo}" alt="">` : esc(session.name.trim()[0]||"م")) + btn;
+  $("empPhotoState").textContent = emp?.pendingPhoto ? t("photo_pending") : t("emp_role");
+}
+function renderPhotoApprovals(){
+  const el = $("photoApprovals"); if(!el) return;
+  const pend = employees.filter(e=>e.pendingPhoto);
+  el.innerHTML = pend.length ? pend.map(e=>`
+    <div class="taskItem">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="lbAvatar" style="width:52px;height:52px;border-radius:14px"><img src="${e.pendingPhoto}" alt=""></div>
+        <b>${esc(e.name)}</b>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn green small" onclick="approvePhoto('${e.id}',true)">${ico("check")}${t("approve")}</button>
+        <button class="btn danger small" onclick="approvePhoto('${e.id}',false)">${ico("x")}${t("reject")}</button>
+      </div>
+    </div>`).join("") : emptyState("no_photos","cam");
+}
+async function approvePhoto(code, ok){
+  const e = await DB.get("employees", code); if(!e) return;
+  const upd = {...e};
+  if (ok) upd.photo = e.pendingPhoto;
+  delete upd.pendingPhoto; delete upd.pendingAt;
+  await DB.set("employees", code, upd);
+  toast(ok ? t("t_photo_ok") : t("t_photo_no"));
+  await loadEmployees(); renderLeaderboard();
+}
+
+/* ---------- tasks ---------- */
+function fillTaskSelectors(){
+  const es = $("taskEmp"), ls = $("taskLoc");
+  if (!es) return;
+  es.innerHTML = employees.length ? employees.map(e=>`<option value="${e.id}">${esc(e.name)} (${e.id})</option>`).join("") : `<option value="">—</option>`;
+  ls.innerHTML = latestSnap ? sortLocs(latestSnap.locations).map(l=>`<option value="${esc(l)}">${esc(locLabel(l))}</option>`).join("") : `<option value="">—</option>`;
+}
+async function createTask(){
+  try{
+    const empCode = $("taskEmp").value, loc = $("taskLoc").value, type = $("taskType").value;
+    if (!empCode) return toast(t("t_add_emp_first"));
+    if (!loc || !latestSnap) return toast(t("t_upload_first"));
+    const emp = employees.find(e=>e.id===empCode);
+    const items = latestSnap.items.filter(i=>i.loc===loc).map(i=>i.name);
+    const id = "T"+Date.now();
+    await DB.set("tasks", id, {
+      type, warehouse: loc, empCode, empName: emp.name,
+      items, status:"pending", createdAt: Date.now(), createdOn: todayKey()
+    });
+    toast("✅ " + t("t_task_sent",{n:emp.name}));
+    loadTasks();
+  }catch(e){ toast("❌ " + t("err") + e.message); }
+}
+async function loadTasks(){
+  allTasks = (await DB.list("tasks")).sort((a,b)=>b.createdAt-a.createdAt);
+  renderTaskList();
+}
+function renderTaskList(){
+  const el = $("taskList"); if(!el) return;
+  el.innerHTML = allTasks.length ? allTasks.map(x=>`
+    <div class="taskItem">
+      <div>
+        <b>${x.type==="count"?t("count_task"):t("expiry_task")}</b> — ${esc(locLabel(x.warehouse))}
+        <div style="font-size:12px;color:var(--muted)">${esc(x.empName)} · ${x.createdOn} · ${x.items.length} ${t("items")}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="pill ${x.status==="done"?"g":"a"}">${x.status==="done"?t("done_pill"):t("waiting_pill")}</span>
+        <button class="btn danger small" onclick="delTask('${x.id}')">${ico("x")}${t("del")}</button>
+      </div>
+    </div>`).join("") : emptyState("no_tasks","send");
+}
+async function delTask(id){ if(!confirm(t("c_del_task")))return; await DB.del("tasks",id); await loadTasks(); loadResults(); loadExpPending(); }
+
+/* ---------- count results ---------- */
+let doneCounts = [], openResult = null;
+async function loadResults(){
+  allTasks = (await DB.list("tasks")).sort((a,b)=>b.createdAt-a.createdAt);
+  doneCounts = allTasks.filter(x=>x.status==="done" && x.type==="count").sort((a,b)=>b.submittedAt-a.submittedAt);
+  renderResultsList(); renderLeaderboard();
+}
+function renderResultsList(){
+  const el = $("resultsList"); if(!el) return;
+  el.innerHTML = doneCounts.length ? doneCounts.map(x=>`
+    <div class="taskItem">
+      <div><b>${esc(x.empName)}</b> — ${esc(locLabel(x.warehouse))}
+        <div style="font-size:12px;color:var(--muted)">
+          ${t("submitted")}: ${new Date(x.submittedAt).toLocaleString("en-GB")} · ${x.items.length} ${t("items")}
+          · <span style="color:var(--gold)">✦ ${x.points||0} ${t("res_pts")}</span> (${x.matched||0} ${t("res_acc")})
+        </div>
+      </div>
+      <button class="btn small" onclick="openResultDetail('${x.id}')">${ico("clip")}${t("view_cmp")}</button>
+    </div>`).join("") : emptyState("no_res","clip");
+}
+async function snapFor(x){
+  return (await DB.get("inv_snapshots", x.snapshotDate)) || (await DB.get("inv_snapshots", x.createdOn)) || latestSnap;
+}
+async function resultRows(x){
+  const sysMap = {};
+  const snap = await snapFor(x);
+  if (snap) snap.items.filter(i=>i.loc===x.warehouse).forEach(i=>sysMap[i.name]=i.qty);
+  return x.items.map(name=>{
+    const sys = sysMap[name], raw = x.results?.[name];
+    const p = raw===undefined||raw===""?null:parseFloat(raw);
+    const diff = (sys!==undefined && p!==null) ? +(p-sys).toFixed(2) : null;
+    return {name, sys, p, diff};
+  });
+}
+async function openResultDetail(id){
+  const x = doneCounts.find(r=>r.id===id); if(!x) return;
+  openResult = x;
+  $("resultDetailCard").classList.remove("hidden");
+  $("resultDetailTitle").textContent = `${x.empName} — ${locLabel(x.warehouse)}`;
+  $("resultDetailMeta").innerHTML = `<span style="color:var(--gold)">✦ ${x.points||0} ${t("res_pts")}</span> · ${x.matched||0} ${t("res_acc")}`;
+  const rows = await resultRows(x);
+  $("resultDetailBody").innerHTML = rows.map(r=>{
+    const dTxt = r.diff===null?"—":r.diff===0?`<span class="pill g">${ico("check")} 0</span>`:`<span class="num ${r.diff>0?"pos":"neg"}">${r.diff>0?"+":""}${fmt(r.diff)}</span>`;
+    return `<tr><td>${esc(r.name)}</td><td class="num">${r.sys===undefined?"—":fmt(r.sys)}</td><td class="num">${r.p===null?"—":fmt(r.p)}</td><td>${dTxt}</td></tr>`;
+  }).join("");
+  $("resultDetailCard").scrollIntoView?.({behavior:"smooth"});
+}
+async function downloadResultPDF(){
+  if (!openResult) return;
+  const x = openResult;
+  const rows = (await resultRows(x)).map(r=>`
+    <tr><td>${esc(r.name)}</td><td>${r.sys===undefined?"—":fmt(r.sys)}</td><td>${r.p===null?"—":fmt(r.p)}</td>
+    <td style="color:${r.diff>0?"#059669":r.diff<0?"#dc2626":"#555"}">${r.diff===null?"—":(r.diff>0?"+":"")+fmt(r.diff)}</td></tr>`).join("");
+  const w = window.open("", "_blank");
+  w.document.write(`<!DOCTYPE html><html lang="${LANG}" dir="${LANG==="ar"?"rtl":"ltr"}"><head><meta charset="UTF-8">
+  <title>${t("rep_title")} - ${esc(x.empName)}</title>
+  <style>
+    body{font-family:'Segoe UI',Tahoma,sans-serif;padding:30px;color:#111}
+    h1{font-size:20px;color:#4c1d95} .meta{color:#555;font-size:13px;margin-bottom:18px;line-height:1.9}
+    table{width:100%;border-collapse:collapse;font-size:12.5px}
+    th{background:#4c1d95;color:#fff;padding:8px;text-align:${LANG==="ar"?"right":"left"}}
+    td{padding:7px 8px;border-bottom:1px solid #ddd}
+    tr:nth-child(even) td{background:#f7f5fb}
+    .foot{margin-top:24px;color:#999;font-size:11px;text-align:center}
+  </style></head><body>
+  <h1>${t("rep_title")}</h1>
+  <div class="meta">
+    ${t("rep_emp")}: <b>${esc(x.empName)}</b> (${x.empCode})<br>
+    ${t("rep_wh")}: <b>${esc(locLabel(x.warehouse))}</b><br>
+    ${t("rep_date")}: ${new Date(x.submittedAt).toLocaleString("en-GB")} · ${t("rep_items")}: ${x.items.length} · ${t("rep_pts")}: ${x.points||0}
+  </div>
+  <table><thead><tr><th>${t("th_product")}</th><th>${t("th_sys_qty")}</th><th>${t("th_phys_qty")}</th><th>${t("th_diff")}</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="foot">© 2026 Skylr — All Rights Reserved</div>
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+
+/* ---------- expiry registry ---------- */
+let expiryReg = [], expPendingTasks = [];
+function fillExpirySelectors(){
+  const ls = $("expLoc"); if(!ls) return;
+  const cur = ls.value;
+  ls.innerHTML = latestSnap ? sortLocs(latestSnap.locations).map(l=>`<option value="${esc(l)}">${esc(locLabel(l))}</option>`).join("") : `<option value="">—</option>`;
+  if (cur) ls.value = cur;
+  fillExpProducts();
+}
+function fillExpProducts(){
+  const ps = $("expProduct"); if(!ps) return;
+  const loc = $("expLoc").value;
+  ps.innerHTML = (latestSnap && loc)
+    ? latestSnap.items.filter(i=>i.loc===loc).sort((a,b)=>a.name.localeCompare(b.name)).map(i=>`<option>${esc(i.name)}</option>`).join("")
+    : `<option value="">—</option>`;
+}
+async function adminSetExpiry(){
+  try{
+    const loc = $("expLoc").value, name = $("expProduct").value, date = $("expDate").value;
+    if (!loc || !name || !date) return toast(t("t_pick_all"));
+    await DB.set("expiry_registry", docId(loc+"__"+name), {loc, name, date, by: t("admin_name"), updatedAt: Date.now()});
+    $("expDate").value = "";
+    toast("✅ " + t("t_exp_saved"));
+    loadExpiry();
+  }catch(e){ toast("❌ " + t("err") + e.message); }
+}
+async function adminEditExpiry(id, date){
+  if (!date) return;
+  const cur = await DB.get("expiry_registry", id); if(!cur) return;
+  await DB.set("expiry_registry", id, {...cur, date, by: t("admin_name"), updatedAt: Date.now()});
+  toast("✅ " + t("t_exp_saved"));
+  loadExpiry();
+}
+async function loadExpiry(){ expiryReg = await DB.list("expiry_registry"); renderExpiry(); renderExpiryEmp(); }
+function expiryRows(q){
+  const now = new Date();
+  return expiryReg
+    .filter(r=>!q || r.name.toLowerCase().includes(q) || r.loc.toLowerCase().includes(q))
+    .sort((a,b)=>a.date<b.date?-1:1)
+    .map(r=>{
+      const days = Math.ceil((new Date(r.date)-now)/86400000);
+      const label = days<0 ? t("expired_since",{d:Math.abs(days)}) : `${days} ${t("days")}${days<=30?" ⚠":""}`;
+      const style = days<0 ? "color:var(--red)" : days<=30 ? "color:var(--amber)" : "color:var(--green)";
+      return {...r, days, label, style};
+    });
+}
+function renderExpiry(){
+  const body = $("expBody"); if(!body) return;
+  const rows = expiryRows(($("expSearch")?.value||"").toLowerCase());
+  const cov = $("expCoverage");
+  if (cov && latestSnap){
+    const dated = new Set(expiryReg.map(r=>r.loc+"|"+r.name));
+    const covered = latestSnap.items.filter(i=>dated.has(i.loc+"|"+i.name)).length;
+    cov.textContent = t("exp_cov",{a:covered, b:latestSnap.items.length});
+  } else if (cov) cov.textContent = "";
+  body.innerHTML = rows.length ? rows.map(r=>`
+    <tr><td>${esc(r.name)}</td><td><span class="pill">${esc(locLabel(r.loc))}</span></td>
+    <td class="num">${r.date}</td><td><span class="num" style="${r.style}">${r.label}</span></td>
+    <td>${esc(r.by||"—")}</td>
+    <td><input type="date" class="cellInput" style="width:150px" value="${r.date}" onchange="adminEditExpiry('${r.id}', this.value)"></td></tr>`
+  ).join("") : `<tr><td colspan="6">${emptyState("no_exp","cal")}</td></tr>`;
+}
+function renderExpiryEmp(){
+  const body = $("expBodyEmp"); if(!body) return;
+  const rows = expiryRows(($("expSearchEmp")?.value||"").toLowerCase());
+  body.innerHTML = rows.length ? rows.map(r=>`
+    <tr><td>${esc(r.name)}</td><td><span class="pill">${esc(locLabel(r.loc))}</span></td>
+    <td class="num">${r.date}</td><td><span class="num" style="${r.style}">${r.label}</span></td></tr>`
+  ).join("") : `<tr><td colspan="4">${emptyState("no_exp","cal")}</td></tr>`;
+}
+async function loadExpPending(){
+  expPendingTasks = (await DB.list("tasks")).filter(x=>x.status==="done" && x.type==="expiry" && !x.approved).sort((a,b)=>b.submittedAt-a.submittedAt);
+  renderExpPending();
+}
+function renderExpPending(){
+  const el = $("expPendingList"); if(!el) return;
+  el.innerHTML = expPendingTasks.length ? expPendingTasks.map(x=>{
+    const n = Object.values(x.results||{}).filter(v=>v).length;
+    return `<div class="taskItem">
+      <div><b>${esc(x.empName)}</b> — ${esc(locLabel(x.warehouse))}
+        <div style="font-size:12px;color:var(--muted)">${t("submitted")}: ${new Date(x.submittedAt).toLocaleString("en-GB")} · ${n} ${t("dates_count")}</div>
+      </div>
+      <button class="btn green small" onclick="approveExpiryTask('${x.id}')">${ico("check")}${t("approve_publish")}</button>
+    </div>`;
+  }).join("") : emptyState("no_pending_exp","check");
+}
+async function approveExpiryTask(id){
+  const x = expPendingTasks.find(r=>r.id===id); if(!x) return;
+  for (const [name, date] of Object.entries(x.results||{})){
+    if (!date) continue;
+    await DB.set("expiry_registry", docId(x.warehouse+"__"+name), {loc:x.warehouse, name, date, by:x.empName, updatedAt: Date.now()});
+  }
+  await DB.set("tasks", x.id, {...x, approved: true});
+  toast("✅ " + t("t_exp_pub"));
+  loadExpPending(); loadExpiry();
+}
+
+/* ---------- employee tasks ---------- */
+let myTasks = [], myOpenTask = null;
+async function loadMyTasks(){
+  const all = await DB.list("tasks");
+  allTasks = all;
+  myTasks = all.filter(x=>x.empCode===session.code).sort((a,b)=>b.createdAt-a.createdAt);
+  renderMyTasks();
+}
+function renderMyTasks(){
+  const el = $("myTasks"); if(!el) return;
+  el.innerHTML = myTasks.length ? myTasks.map(x=>`
+    <div class="taskItem">
+      <div><b>${x.type==="count"?t("count_task"):t("expiry_task")}</b> — ${esc(locLabel(x.warehouse))}
+        <div style="font-size:12px;color:var(--muted)">${x.createdOn} · ${x.items.length} ${t("items")}${x.type==="count"&&x.status==="done"?` · <span style="color:var(--gold)">✦ ${x.points||0} ${t("pts")}</span>`:""}</div>
+      </div>
+      ${x.status==="done"
+        ? `<span class="pill g">${t("sent_pill")}</span>`
+        : `<button class="btn small" onclick="openFill('${x.id}')">${ico("clip")}${t("start_fill")}</button>`}
+    </div>`).join("") : emptyState("no_my_tasks","clip");
+}
+function openFill(id){
+  const x = myTasks.find(r=>r.id===id); if(!x) return;
+  myOpenTask = x;
+  $("fillCard").classList.remove("hidden");
+  const isCount = x.type==="count";
+  $("fillTitle").textContent = (isCount?t("count_task"):t("expiry_task")) + " — " + locLabel(x.warehouse);
+  $("fillSub").textContent = isCount ? t("fill_count_sub") : t("fill_exp_sub");
+  $("fillHead").innerHTML = `<tr><th>${t("th_product")}</th><th style="width:190px">${isCount?t("phys_qty"):t("th_exp_date")}</th></tr>`;
+  $("fillBody").innerHTML = x.items.map(name=>`
+    <tr><td>${esc(name)}</td><td>
+      ${isCount
+        ? `<input type="number" step="any" min="0" data-name="${esc(name)}" class="fillInput cellInput" style="direction:ltr" placeholder="0">`
+        : `<input type="date" data-name="${esc(name)}" class="fillInput cellInput">`}
+    </td></tr>`).join("");
+  $("fillCard").scrollIntoView?.({behavior:"smooth"});
+}
+async function submitTask(){
+  if (!myOpenTask) return;
+  try{
+    const results = {};
+    document.querySelectorAll(".fillInput").forEach(inp=>{ results[inp.dataset.name] = inp.value; });
+    const filled = Object.values(results).filter(v=>v!=="").length;
+    if (!filled) return toast(t("t_fill_one"));
+    if (!confirm(t("c_submit",{a:filled,b:myOpenTask.items.length}))) return;
+    let matched = 0, points = 0;
+    if (myOpenTask.type === "count"){
+      const snap = (await DB.get("inv_snapshots", myOpenTask.createdOn)) || (await DB.get("inv_snapshots", todayKey()));
+      const sysMap = {};
+      if (snap) snap.items.filter(i=>i.loc===myOpenTask.warehouse).forEach(i=>sysMap[i.name]=i.qty);
+      for (const [name, v] of Object.entries(results)){
+        if (v==="" || sysMap[name]===undefined) continue;
+        if (Math.abs(parseFloat(v) - sysMap[name]) < 0.01) matched++;
+      }
+      points = matched * 10;
+    }
+    await DB.set("tasks", myOpenTask.id, {
+      ...myOpenTask, results, status:"done", submittedAt: Date.now(),
+      snapshotDate: myOpenTask.createdOn, matched, points
+    });
+    $("fillCard").classList.add("hidden");
+    myOpenTask = null;
+    toast("✅ " + t("t_sent_admin") + (points ? " · " + t("t_pts_won",{p:points}) : ""));
+    await loadMyTasks();
+    renderEmpPoints();
+  }catch(e){ toast("❌ " + t("err") + e.message); }
+}
+
+/* ---------- boot ---------- */
+window.DB = DB;
+applyLang();
+tickClock();
+</script>
+</body>
+</html>
