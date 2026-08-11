@@ -1,0 +1,427 @@
+/**
+ * Curtain Opening Effect - Reusable CSS
+ * Created for IISF 2025 - Can be used on any website
+ * Author: Tulsiram Kushwah
+ * LinkedIn: https://www.linkedin.com/in/tulsiram-kushwah-software-engineer/
+ * Facebook: https://www.facebook.com/ramp00786
+ * Version: 1.0
+ */
+
+/* Curtain Container */
+.curtain-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10000;
+    pointer-events: none;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.curtain-container.active {
+    pointer-events: all;
+}
+
+/* Individual Curtain Panels */
+.curtain-panel {
+    position: absolute;
+    top: 0;
+    width: 50vw;
+    height: 100vh;
+    background: linear-gradient(45deg, 
+        #8B0000 0%, 
+        #DC143C 15%, 
+        #B22222 30%, 
+        #CD5C5C 45%, 
+        #8B0000 60%, 
+        #A0522D 75%, 
+        #8B4513 90%, 
+        #654321 100%
+    );
+    background-size: 20px 20px;
+    transition: transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.3);
+    z-index: 10001;
+}
+
+/* Curtain Texture Overlay */
+.curtain-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 0, 0, 0.1) 2px,
+            rgba(0, 0, 0, 0.1) 4px
+        ),
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(255, 255, 255, 0.05) 3px,
+            rgba(255, 255, 255, 0.05) 6px
+        );
+    pointer-events: none;
+}
+
+/* Curtain Folds Effect */
+.curtain-panel::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.2) 0px,
+        rgba(0, 0, 0, 0.1) 5px,
+        transparent 10px,
+        rgba(255, 255, 255, 0.1) 15px,
+        rgba(0, 0, 0, 0.2) 20px
+    );
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Left Curtain Panel */
+.curtain-left {
+    left: 0;
+    right: 50%;
+    transform-origin: left center;
+    background-image: 
+        linear-gradient(45deg, 
+            #8B0000 0%, 
+            #DC143C 15%, 
+            #B22222 30%, 
+            #CD5C5C 45%, 
+            #8B0000 60%, 
+            #A0522D 75%, 
+            #8B4513 90%, 
+            #654321 100%
+        );
+}
+
+/* Right Curtain Panel */
+.curtain-right {
+    left: 50%;
+    right: 0;
+    transform-origin: right center;
+    background-image: 
+        linear-gradient(-45deg, 
+            #8B0000 0%, 
+            #DC143C 15%, 
+            #B22222 30%, 
+            #CD5C5C 45%, 
+            #8B0000 60%, 
+            #A0522D 75%, 
+            #8B4513 90%, 
+            #654321 100%
+        );
+}
+
+/* Curtain Rod */
+.curtain-rod {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(to bottom, #CD7F32, #8B4513, #654321);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    z-index: 10001;
+}
+
+/* Curtain Rod Rings */
+.curtain-rings {
+    position: absolute;
+    top: -3px;
+    left: 0;
+    width: 100%;
+    height: 14px;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 48px,
+        #B8860B 48px,
+        #DAA520 52px,
+        transparent 52px,
+        transparent 100px
+    );
+    z-index: 10002;
+}
+
+/* Opening Animation States */
+.curtain-container.opening .curtain-left {
+    transform: translateX(-100%);
+}
+
+.curtain-container.opening .curtain-right {
+    transform: translateX(100%);
+}
+
+/* Ensure curtains cover full viewport */
+.curtain-left,
+.curtain-right {
+    width: 50vw !important;
+    height: 100vh !important;
+}
+
+/* Fix for mobile devices */
+@media screen and (max-width: 768px) {
+    .curtain-container {
+        width: 100vw !important;
+        height: 100vh !important;
+    }
+    
+    .curtain-left,
+    .curtain-right {
+        width: 50vw !important;
+        height: 100vh !important;
+    }
+}
+
+/* Curtain Open Button */
+.curtain-open-btn {
+    position: relative;
+    background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00);
+    color: #000;
+    border: none;
+    padding: 20px 40px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-radius: 50px;
+    box-shadow: 
+        0 8px 25px rgba(255, 215, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: 'Arial', sans-serif;
+}
+
+.curtain-open-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 
+        0 12px 35px rgba(255, 215, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    background: linear-gradient(135deg, #FFE55C, #FFB347, #FF7F50);
+}
+
+
+
+/* Hide content box when curtains are opening */
+.curtain-container.opening .curtain-content-box {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+/* Curtain Content Box */
+.curtain-content-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10002;
+    background: transparent;
+    border-radius: 15px;
+    padding: 30px;
+    text-align: center;
+    max-width: 70%;
+    width: 80%;
+}
+
+/* Curtain Title */
+.curtain-title {
+    position: relative;
+    color: #FFD700;
+    font-size: 3rem;
+    font-weight: bold;
+    text-align: center;
+    text-shadow: 
+        2px 2px 4px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(255, 215, 0, 0.5);
+    font-family: 'Georgia', serif;
+    margin-bottom: 20px;
+    animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    0% {
+        text-shadow: 
+            2px 2px 4px rgba(0, 0, 0, 0.8),
+            0 0 20px rgba(255, 215, 0, 0.5);
+    }
+    100% {
+        text-shadow: 
+            2px 2px 4px rgba(0, 0, 0, 0.8),
+            0 0 30px rgba(255, 215, 0, 0.8),
+            0 0 40px rgba(255, 215, 0, 0.3);
+    }
+}
+
+/* Curtain Subtitle */
+.curtain-subtitle {
+    position: relative;
+    color: #FFF;
+    font-size: 1.2rem;
+    text-align: center;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    font-family: 'Arial', sans-serif;
+    font-style: italic;
+    opacity: 0.9;
+    margin-bottom: 30px;
+}
+
+/* Sparkle Effect */
+.curtain-sparkles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10001;
+    overflow: hidden;
+}
+
+.sparkle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #FFD700;
+    border-radius: 50%;
+    animation: sparkleFloat 4s linear infinite;
+    opacity: 0;
+}
+
+@keyframes sparkleFloat {
+    0% {
+        opacity: 0;
+        transform: translateY(100vh) scale(0);
+    }
+    10% {
+        opacity: 1;
+        transform: translateY(90vh) scale(1);
+    }
+    90% {
+        opacity: 1;
+        transform: translateY(10vh) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(0) scale(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .curtain-title {
+        font-size: 2rem;
+        top: 30%;
+        width: 95%;
+    }
+    
+    .curtain-subtitle {
+        font-size: 1rem;
+        top: 42%;
+        width: 95%;
+    }
+    
+    .curtain-open-btn {
+        padding: 15px 30px;
+        font-size: 1.2rem;
+        top: 52%;
+    }
+}
+
+@media (max-width: 480px) {
+    .curtain-title {
+        font-size: 1.5rem;
+        top: 28%;
+        width: 95%;
+    }
+    
+    .curtain-subtitle {
+        font-size: 0.9rem;
+        top: 40%;
+        width: 95%;
+    }
+    
+    .curtain-open-btn {
+        padding: 12px 25px;
+        font-size: 1rem;
+        top: 50%;
+    }
+}
+
+/* Animation for curtain reveal */
+.curtain-container.revealed {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1s ease 2s;
+}
+
+/* Custom Themes */
+.curtain-theme-royal .curtain-panel {
+    background: linear-gradient(45deg, 
+        #4B0082 0%, 
+        #6A0DAD 20%, 
+        #8A2BE2 40%, 
+        #9932CC 60%, 
+        #BA55D3 80%, 
+        #4B0082 100%
+    );
+}
+
+.curtain-theme-elegant .curtain-panel {
+    background: linear-gradient(45deg, 
+        #2F4F4F 0%, 
+        #708090 20%, 
+        #778899 40%, 
+        #B0C4DE 60%, 
+        #E6E6FA 80%, 
+        #2F4F4F 100%
+    );
+}
+
+.curtain-theme-gold .curtain-panel {
+    background: linear-gradient(45deg, 
+        #B8860B 0%, 
+        #DAA520 20%, 
+        #FFD700 40%, 
+        #FFFF00 60%, 
+        #ADFF2F 80%, 
+        #B8860B 100%
+    );
+}
+
+.curtain-theme-saffron .curtain-panel {
+    background: linear-gradient(45deg, 
+        #FF8C00 0%, 
+        #FF7F00 15%, 
+        #FF6347 30%, 
+        #FFA500 45%, 
+        #FFD700 60%, 
+        #FFAA00 75%, 
+        #FF8C00 90%, 
+        #E68900 100%
+    );
+}
+/* أيقونة Font Awesome غير محمّلة عندنا — نخفيها ونكتفي بالنص */
+.curtain-open-btn i,.curtain-content-box i{display:none}
+.curtain-title,.curtain-subtitle,.curtain-open-btn{font-family:'Almarai',system-ui,sans-serif}
+.curtain-container{z-index:11000}
