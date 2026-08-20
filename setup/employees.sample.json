@@ -1,0 +1,7 @@
+{
+  "employees": {
+    "00001": { "name": "Admin",       "password": "000000", "role": "admin" },
+    "00002": { "name": "Cashier 1",   "password": "123456", "role": "staff" },
+    "00003": { "name": "Supervisor",  "password": "654321", "role": "admin" }
+  }
+}

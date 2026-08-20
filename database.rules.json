@@ -1,0 +1,14 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "employees": {
+      ".read": "auth != null",
+      ".write": false
+    },
+    "products": {
+      ".read": "auth != null",
+      ".write": false
+    }
+  }
+}
